@@ -1,1 +1,218 @@
+<div align="center">
+  <img src="docs/assets/logo.png" alt="OhMyFood" width="240" />
+  <h1>OhMyFood – Plataforma Portuguesa de Entrega On-Demand</h1>
+  <p><em>Substitua <code>docs/assets/logo.png</code> pelo logo oficial fornecido.</em></p>
+</div>
 
+## 🧭 Visão Geral
+
+OhMyFood é um MVP+ para uma plataforma de entregas on-demand focada no mercado português, com piloto em Lisboa e escalabilidade para todo o território nacional e ilhas. O monorepo contém quatro aplicações Flutter (Cliente, Estafeta, Restaurante e Admin Web), um backend NestJS com Prisma/PostgreSQL, integrações com Stripe, Mapbox, Redis para realtime/filas e infraestrutura local via Docker Compose.
+
+## 📦 Estrutura do Monorepo
+
+```
+apps/
+  customer_app/
+  courier_app/
+  restaurant_app/
+  admin_panel/
+packages/
+  design_system/
+  shared_models/
+backend/
+  api/
+infra/
+  docker-compose.yml
+scripts/
+  bootstrap_flutter.sh
+melos.yaml
+.env.example
+ReadMe (este ficheiro)
+```
+
+## 🚀 Aplicações Flutter
+
+- `customer_app`: onboarding, catálogo, carrinho, pagamentos, tracking e chat.
+- `courier_app`: onboarding, aceitar pedidos, navegação e ganhos.
+- `restaurant_app`: gestão de menu, aceitação e métricas básicas.
+- `admin_panel`: live ops, campanhas, utilizadores, auditoria.
+
+Cada app partilha o `design_system` e `shared_models`. Para orquestrar pacotes foi configurado `melos` com scripts utilitários.
+
+### Bootstrap das apps
+
+```bash
+./scripts/bootstrap_flutter.sh
+```
+
+> Pré-requisitos: Flutter 3.19+, Dart 3.3+, fvm opcional. O script instala dependências (`flutter pub get`) em todas as apps e pacotes.
+
+### Executar cada app
+
+```bash
+cd apps/customer_app && flutter run -d chrome
+cd apps/courier_app && flutter run -d chrome
+cd apps/restaurant_app && flutter run -d chrome
+cd apps/admin_panel && flutter run -d chrome
+```
+
+Substitua `-d chrome` por `-d android` ou `-d ios` conforme o alvo.
+
+## 🧰 Backend NestJS
+
+### Stack
+
+- NestJS 10 + TypeScript
+- Prisma ORM + PostgreSQL
+- WebSockets (Socket.IO) para chat/tracking
+- Stripe (pagamentos) e Mapbox (geocoding/ETA)
+- Redis (cache, filas e estado temps)
+
+### Módulos Principais
+
+- `auth`: registo/login com JWT (access + refresh), hashing Argon2.
+- `users`: perfis e consultas.
+- `restaurants`: listagem, catálogo, horários.
+- `menu`: itens, variações e addons.
+- `orders`: criação, estados e ligação a pagamentos.
+- `dispatch`: matching inicial de estafetas (placeholder com log e filtro de estafetas online).
+- `payments`: intents Stripe, webhooks e reconciliação.
+- `promos`: promoções ativas.
+- `chat`: gateway WebSocket `/chat` com persistência.
+- `admin`: dashboards e live ops básicos.
+
+### Configuração Local
+
+1. **Clonar variáveis de ambiente**
+
+   ```bash
+   cp .env.example backend/api/.env
+   ```
+
+   Ajuste credenciais (Stripe, Mapbox, MB WAY/Multibanco futuro, buckets, etc.).
+
+2. **Infraestrutura**
+
+   ```bash
+   cd infra
+   docker compose up -d
+   ```
+
+   Serviços levantados: PostgreSQL (`5432`), Redis (`6379`), Adminer (`8080`).
+
+3. **Backend API**
+
+   ```bash
+   cd backend/api
+   npm install
+   npx prisma migrate dev
+   npm run db:seed
+   npm run start:dev
+   ```
+
+   - Swagger disponível em `http://localhost:3000/docs`.
+   - Seed cria utilizadores demo (admin, restaurante) e exemplo de menu.
+
+4. **Prisma Studio (opcional)**
+
+   ```bash
+   npx prisma studio
+   ```
+
+### Stripe
+
+- Defina `STRIPE_API_KEY` e `STRIPE_WEBHOOK_SECRET` no `.env`.
+- Webhook disponível em `POST /payments/stripe/webhook` (configurar endpoint local com `stripe listen`).
+- Placeholder cria `PaymentIntent` via `StripeIntegrationService` e regista pagamento na base.
+
+### Mapbox
+
+- Configurar `MAPBOX_API_KEY`.
+- `MapboxService` expõe `geocode` para utilização em módulos de dispatch ou onboarding.
+- Futuro: cálculo de rotas, ETA e heatmaps.
+
+### Redis & Realtime
+
+- Redis previsto para filas de dispatch, cache de localização, rate-limiting.
+- Chat usa Socket.IO (`/chat`) e FCM (a configurar nas apps) para push notifications.
+
+### Segurança
+
+- JWT (15m access / 7d refresh) com rotação manual no futuro.
+- Helmet/CORS/rate-limit devem ser adicionados via middleware (ver secção TODO).
+- RBAC com papéis (`Role` enum) e validação nas rotas planeada.
+
+## 🗂️ Modelo de Dados (Prisma)
+
+Modelos principais: `User`, `Restaurant`, `MenuItem`, `OptionGroup`, `Option`, `Order`, `OrderItem`, `Payment`, `Promo`, `PromoRedemption`, `Chat`, `Message`, `Courier`, `CourierLocation`.
+
+Estados de pedido (`OrderStatus`): `DRAFT → AWAITING_ACCEPTANCE → PREPARING → PICKUP → ON_THE_WAY → DELIVERED`. Cancelamentos e auditoria previstos.
+
+## 🔄 Fluxos Críticos (MVP)
+
+- **Checkout & Pagamento**: Criação de pedido → PaymentIntent Stripe → webhook confirma → estado avança para `AWAITING_ACCEPTANCE`.
+- **Dispatch**: Serviço `DispatchService` faz matching inicial (placeholder com `findEligibleCouriers`). Próximos passos incluem timers, ondas e fallback.
+- **Chat/Tracking**: Gateway WebSocket + estrutura Messenger. Necessário integrar FCM para notificações push.
+
+## ✅ Critérios de Pronto (Piloto Lisboa)
+
+- 50–100 restaurantes onboard.
+- 50–200 estafetas validados.
+- Pagamentos cartão + MB WAY, tracking estável, chat funcional.
+- Admin panel com live ops e campanhas.
+- SLA < 35–45 min.
+
+## 🛣️ Roadmap (8 semanas)
+
+1. **Sprint 1 – Fundações**
+   - Monorepo, skeletons Flutter, design system.
+   - Backend: Auth, Users, Restaurants, Swagger, seeds.
+   - Config placeholders Mapbox/Stripe.
+2. **Sprint 2 – Pedidos Core**
+   - Menu, carrinho, cálculo de taxas.
+   - Criação de pedido + intents.
+   - Webhooks pagamento + aceitação restaurante.
+   - Admin MVP (listagens).
+3. **Sprint 3 – Dispatch & Realtime**
+   - Matching estafetas (ondas/timers).
+   - Tracking WebSocket + FCM.
+   - Chat por pedido, ratings, relatórios restaurante.
+4. **Sprint 4 – Portugal Ready**
+   - MB WAY/Multibanco.
+   - RGPD (export/delete), hardening segurança.
+   - Performance pass, builds release Android/iOS/Web.
+
+## 🧪 Testes & Qualidade
+
+- Backend: adicionar Jest + `@nestjs/testing` (não incluído por brevidade).
+- Flutter: widget tests para flows críticos (checkout, tracking, chat).
+- CI/CD: configurar GitHub Actions (lint/test/build/deploy) com Railway/Fly.io.
+
+## 📸 Logo
+
+Guarde o logo fornecido em `docs/assets/logo.png` para referência partilhada no monorepo. Atualize as apps Flutter para o utilizar no onboarding e home.
+
+## 🔒 RGPD & Segurança
+
+- Consentimentos e gestão de dados (export/delete) prontos para Sprint 4.
+- Logs de auditoria (`Order.auditLog`, `Order.statusHistory`).
+- Variáveis sensíveis em `.env` e gestão via secret manager em produção.
+- Backups automáticos do Postgres (cron Railway/Fly.io) sugeridos.
+
+## 🔗 Integrações Futuras
+
+- **MB WAY/Multibanco**: Add provider na camada `payments`, webhooks unificados.
+- **Ifthenpay/EuPago/SIBS**: adaptadores via `payments/providers/*` (estrutura sugerida).
+- **FCM**: tokens armazenados por utilizador, refresh via backend.
+- **Mapas**: geofencing e throttling no app Estafeta (5–10s).
+
+## 🧭 Próximos Passos Imediatos
+
+1. Implementar UI real nas apps Flutter consumindo endpoints (`/restaurants`, `/orders`, `/promos`).
+2. Conectar app Cliente ao fluxo de checkout completo (Stripe + webhook → estado `AWAITING_ACCEPTANCE`).
+3. Evoluir Admin Panel com dashboards em tempo real (socket + mapas).
+4. Solidificar módulo Dispatch com lógica baseada em distância e SLA.
+
+---
+
+Made with ❤️ para acelerar o lançamento do OhMyFood em Portugal.

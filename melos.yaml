@@ -1,0 +1,8 @@
+name: ohmyfood
+
+packages:
+  - apps/**
+  - packages/**
+
+scripts:
+  bootstrap: ./scripts/bootstrap_flutter.sh

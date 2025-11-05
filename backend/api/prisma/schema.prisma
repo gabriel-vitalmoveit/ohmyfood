@@ -1,0 +1,218 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  COURIER
+  RESTAURANT
+  ADMIN
+}
+
+enum OrderStatus {
+  DRAFT
+  AWAITING_ACCEPTANCE
+  PREPARING
+  PICKUP
+  ON_THE_WAY
+  DELIVERED
+  CANCELLED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  role          Role
+  phone         String?
+  displayName   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  addresses     Json?
+  courier       Courier?
+  restaurant    Restaurant?
+  orders        Order[]   @relation("CustomerOrders")
+  courierOrders Order[]   @relation("CourierOrders")
+  messages      Message[]
+}
+
+model Courier {
+  id              String   @id @default(cuid())
+  user            User     @relation(fields: [userId], references: [id])
+  userId          String   @unique
+  iban            String?
+  isVerified      Boolean  @default(false)
+  online          Boolean  @default(false)
+  location        CourierLocation?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@map("couriers")
+}
+
+model CourierLocation {
+  id        String   @id @default(cuid())
+  courier   Courier  @relation(fields: [courierId], references: [id])
+  courierId String   @unique
+  lat       Float
+  lng       Float
+  updatedAt DateTime @updatedAt
+  @@map("courier_locations")
+}
+
+model Restaurant {
+  id             String       @id @default(cuid())
+  user           User?        @relation(fields: [userId], references: [id])
+  userId         String?      @unique
+  name           String
+  description    String?
+  imageUrl       String?
+  lat            Float
+  lng            Float
+  active         Boolean      @default(false)
+  categories     String[]
+  schedules      Json?
+  averagePrepMin Int          @default(15)
+  menuItems      MenuItem[]
+  orders         Order[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  @@map("restaurants")
+}
+
+model MenuItem {
+  id             String        @id @default(cuid())
+  restaurant     Restaurant    @relation(fields: [restaurantId], references: [id])
+  restaurantId   String
+  name           String
+  description    String?
+  priceCents     Int
+  available      Boolean       @default(true)
+  imageUrl       String?
+  optionGroups   OptionGroup[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  @@map("menu_items")
+}
+
+model OptionGroup {
+  id         String     @id @default(cuid())
+  menuItem   MenuItem   @relation(fields: [menuItemId], references: [id])
+  menuItemId String
+  name       String
+  minSelect  Int        @default(0)
+  maxSelect  Int        @default(1)
+  options    Option[]
+  @@map("option_groups")
+}
+
+model Option {
+  id            String       @id @default(cuid())
+  optionGroup   OptionGroup  @relation(fields: [optionGroupId], references: [id])
+  optionGroupId String
+  name          String
+  priceCents    Int          @default(0)
+  available     Boolean      @default(true)
+  @@map("options")
+}
+
+model Order {
+  id              String        @id @default(cuid())
+  user            User          @relation("CustomerOrders", fields: [userId], references: [id])
+  userId          String
+  restaurant      Restaurant    @relation(fields: [restaurantId], references: [id])
+  restaurantId    String
+  courier         User?         @relation("CourierOrders", fields: [courierId], references: [id])
+  courierId       String?
+  status          OrderStatus   @default(DRAFT)
+  itemsTotal      Int
+  deliveryFee     Int
+  serviceFee      Int
+  total           Int
+  payment         Payment?
+  items           OrderItem[]
+  promo           PromoRedemption?
+  chat            Chat?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  statusHistory   Json?
+  auditLog        Json?
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  order       Order    @relation(fields: [orderId], references: [id])
+  orderId     String
+  menuItem    MenuItem @relation(fields: [menuItemId], references: [id])
+  menuItemId  String
+  name        String
+  quantity    Int
+  unitPrice   Int
+  addons      Json?
+  @@map("order_items")
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  order         Order    @relation(fields: [orderId], references: [id])
+  orderId       String   @unique
+  provider      String
+  providerRef   String?
+  status        String
+  amount        Int
+  receiptUrl    String?
+  rawPayload    Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@map("payments")
+}
+
+model Promo {
+  id          String             @id @default(cuid())
+  code        String             @unique
+  rules       Json
+  startsAt    DateTime
+  endsAt      DateTime
+  budgetCents Int
+  usedCents   Int                @default(0)
+  redemptions PromoRedemption[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  @@map("promos")
+}
+
+model PromoRedemption {
+  id        String  @id @default(cuid())
+  promo     Promo   @relation(fields: [promoId], references: [id])
+  promoId   String
+  order     Order   @relation(fields: [orderId], references: [id])
+  orderId   String  @unique
+  amount    Int
+  createdAt DateTime @default(now())
+  @@map("promo_redemptions")
+}
+
+model Chat {
+  id        String     @id @default(cuid())
+  order     Order      @relation(fields: [orderId], references: [id])
+  orderId   String     @unique
+  messages  Message[]
+  createdAt DateTime   @default(now())
+  @@map("chats")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  chat      Chat     @relation(fields: [chatId], references: [id])
+  chatId    String
+  sender    User     @relation(fields: [senderId], references: [id])
+  senderId  String
+  content   String
+  createdAt DateTime @default(now())
+  @@map("messages")
+}

@@ -1,0 +1,11 @@
+node_modules
+dist
+.idea
+.vscode
+*.iml
+**/.dart_tool
+**/build
+**/ios
+**/android
+.env
+infra/data
