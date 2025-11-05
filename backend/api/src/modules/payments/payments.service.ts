@@ -34,7 +34,9 @@ export class PaymentsService {
   }
 
   async handleStripeWebhook(payload: Buffer, signature: string | undefined) {
-    this.logger.log(`📩 Webhook Stripe recebido (${payload.length} bytes)`);
+    this.logger.log(
+      `📩 Webhook Stripe recebido (${payload.length} bytes)${signature ? ` | assinatura ${signature.slice(0, 8)}…` : ''}`,
+    );
     const secret = this.configService.get<string>('stripe.webhookSecret');
     if (!secret) {
       this.logger.warn('Stripe webhook secret não configurado');

@@ -5,7 +5,15 @@ import { PrismaService } from '../common';
 export class ChatService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async saveMessage({ orderId, senderId, content }: { orderId: string; senderId: string; content: string }) {
+  async saveMessage({
+    orderId,
+    senderId,
+    content,
+  }: {
+    orderId: string;
+    senderId: string;
+    content: string;
+  }) {
     const chat = await this.prisma.chat.upsert({
       where: { orderId },
       create: {

@@ -22,7 +22,12 @@ export class OrdersService {
   async getById(id: string) {
     const order = await this.prisma.order.findUnique({
       where: { id },
-      include: { restaurant: true, items: true, payment: true, chat: { include: { messages: true } } },
+      include: {
+        restaurant: true,
+        items: true,
+        payment: true,
+        chat: { include: { messages: true } },
+      },
     });
     if (!order) {
       throw new NotFoundException('Pedido não encontrado');

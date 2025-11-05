@@ -19,10 +19,7 @@ export class OrdersController {
   }
 
   @Post('user/:userId')
-  create(
-    @Param('userId') userId: string,
-    @Body() dto: CreateOrderDto,
-  ) {
+  create(@Param('userId') userId: string, @Body() dto: CreateOrderDto) {
     return this.ordersService.create(userId, dto);
   }
 }
