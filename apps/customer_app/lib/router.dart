@@ -129,9 +129,16 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
+String _getInitialLocation(bool onboardingCompleted, bool isAuthenticated) {
+  if (!onboardingCompleted) return '/onboarding';
+  if (!isAuthenticated) return '/login';
+  return '/home';
+}
+
 class _RouterRefresh extends ChangeNotifier {
   _RouterRefresh(this.ref) {
     ref.listen<bool>(onboardingCompletedProvider, (_, __) => notifyListeners());
+    ref.listen<AuthState>(authStateProvider, (_, __) => notifyListeners());
   }
 
   final Ref ref;

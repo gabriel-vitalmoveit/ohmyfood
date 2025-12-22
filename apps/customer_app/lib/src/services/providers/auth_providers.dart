@@ -98,8 +98,17 @@ sealed class AuthState {
   // Helper para verificar se está autenticado
   bool get isAuthenticated => this is _Authenticated;
   
+  // Helper para verificar se está carregando
+  bool get isLoading => this is _Loading;
+  
+  // Helper para verificar se há erro
+  bool get hasError => this is _Error;
+  
   // Helper para obter email se autenticado
   String? get email => this is _Authenticated ? (this as _Authenticated).email : null;
+  
+  // Helper para obter mensagem de erro
+  String? get errorMessage => this is _Error ? (this as _Error).message : null;
 }
 
 class _Initial extends AuthState {

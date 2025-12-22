@@ -109,7 +109,7 @@ class RegisterScreen extends HookConsumerWidget {
               const SizedBox(height: OhMyFoodSpacing.md),
               
               // Error Message
-              if (authState is _Error)
+              if (authState.hasError && authState.errorMessage != null)
                 Container(
                   padding: const EdgeInsets.all(OhMyFoodSpacing.md),
                   decoration: BoxDecoration(
@@ -123,7 +123,7 @@ class RegisterScreen extends HookConsumerWidget {
                       const SizedBox(width: OhMyFoodSpacing.sm),
                       Expanded(
                         child: Text(
-                          (authState as _Error).message,
+                          authState.errorMessage!,
                           style: OhMyFoodTypography.body.copyWith(color: Colors.red.shade700),
                         ),
                       ),
@@ -135,7 +135,7 @@ class RegisterScreen extends HookConsumerWidget {
               
               // Register Button
               ElevatedButton(
-                onPressed: authState is _Loading
+                onPressed: authState.isLoading
                     ? null
                     : () {
                         final email = emailController.text.trim();
@@ -168,7 +168,7 @@ class RegisterScreen extends HookConsumerWidget {
                   backgroundColor: OhMyFoodColors.primary,
                   foregroundColor: Colors.white,
                 ),
-                child: authState is _Loading
+                child: authState.isLoading
                     ? const SizedBox(
                         height: 20,
                         width: 20,
