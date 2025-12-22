@@ -20,7 +20,7 @@ class OhMyFoodTheme {
         elevation: 0,
         titleTextStyle: OhMyFoodTypography.titleMd,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: OhMyFoodColors.neutral0,
         elevation: 0,
         margin: EdgeInsets.zero,
