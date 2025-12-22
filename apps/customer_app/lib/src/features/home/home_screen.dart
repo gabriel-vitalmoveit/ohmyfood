@@ -468,13 +468,13 @@ class _RestaurantCard extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return OhMyFoodCard(
-      onTap: () => context.go('/home/restaurants/${restaurant.id}'),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => context.go('/home/restaurants/${restaurant.id}'),
+        child: Padding(
+          padding: const EdgeInsets.all(OhMyFoodSpacing.md),
+          child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
@@ -568,6 +568,7 @@ class _RestaurantCard extends HookConsumerWidget {
               ),
             ),
           ],
+        ),
         ),
       ),
     );
