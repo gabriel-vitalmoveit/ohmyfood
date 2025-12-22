@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_models/shared_models.dart';
+import '../config/app_config.dart';
 
 class ApiClient {
-  ApiClient({String? baseUrl}) : _baseUrl = baseUrl ?? 'http://localhost:3000';
+  ApiClient({String? baseUrl}) : _baseUrl = baseUrl ?? AppConfig.apiUrl;
 
   final String _baseUrl;
 

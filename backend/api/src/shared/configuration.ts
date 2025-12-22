@@ -1,5 +1,21 @@
 export default () => ({
   port: parseInt(process.env.PORT ?? '3000', 10),
+  cors: {
+    origin: process.env.CORS_ORIGIN ?? '*',
+    allowedOrigins: process.env.CORS_ORIGINS
+      ? process.env.CORS_ORIGINS.split(',')
+      : [
+          'https://ohmyfood.eu',
+          'https://www.ohmyfood.eu',
+          'https://admin.ohmyfood.eu',
+          'https://restaurante.ohmyfood.eu',
+          'https://estafeta.ohmyfood.eu',
+          'http://localhost:8080',
+          'http://localhost:8081',
+          'http://localhost:8082',
+          'http://localhost:8083',
+        ],
+  },
   database: {
     url: process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/ohmyfood',
   },
