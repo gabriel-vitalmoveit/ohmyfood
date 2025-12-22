@@ -9,9 +9,6 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
-  // Prefixo global /api para todas as rotas
-  app.setGlobalPrefix('api');
-
   const corsConfig = configService.get('cors');
   const allowedOrigins = corsConfig?.allowedOrigins || corsConfig?.origin || [
     'https://ohmyfood.eu',
@@ -40,7 +37,13 @@ async function bootstrap() {
     }),
   );
 
+  // Webhook do Stripe deve estar fora do prefixo /api
   app.use('/payments/stripe/webhook', bodyParser.raw({ type: 'application/json' }));
+
+  // Prefixo global /api para todas as rotas (exceto webhooks)
+  app.setGlobalPrefix('api', {
+    exclude: ['/payments/stripe/webhook'],
+  });
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('OhMyFood API')

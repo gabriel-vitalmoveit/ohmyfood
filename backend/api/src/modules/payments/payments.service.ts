@@ -46,15 +46,8 @@ export class PaymentsService {
     const parsed = JSON.parse(payload.toString('utf8'));
     const orderId = parsed?.data?.object?.metadata?.orderId;
     if (!orderId) {
-      this.logger.warn('Webhook Stripe sem orderId na metadata. Guardando raw payload.');
-      await this.prisma.payment.create({
-        data: {
-          provider: 'stripe',
-          status: parsed?.type ?? 'unknown',
-          amount: parsed?.data?.object?.amount_received ?? 0,
-          rawPayload: parsed,
-        },
-      });
+      this.logger.warn('Webhook Stripe sem orderId na metadata. Ignorando webhook.');
+      // Não podemos criar payment sem orderId (relação obrigatória)
       return;
     }
 
