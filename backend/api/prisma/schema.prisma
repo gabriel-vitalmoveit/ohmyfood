@@ -94,6 +94,7 @@ model MenuItem {
   available      Boolean       @default(true)
   imageUrl       String?
   optionGroups   OptionGroup[]
+  orderItems     OrderItem[]
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   @@map("menu_items")
