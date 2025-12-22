@@ -13,6 +13,9 @@ dependencies:
   go_router: ^12.1.1
   hooks_riverpod: ^2.5.1
   flutter_hooks: ^0.20.5
+  http: ^1.2.0
+  cached_network_image: ^3.3.1
+  shimmer: ^3.0.0
   design_system:
     path: ../../packages/design_system
   shared_models:
