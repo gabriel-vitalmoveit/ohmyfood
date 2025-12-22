@@ -9,6 +9,9 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
+  // Prefixo global /api para todas as rotas
+  app.setGlobalPrefix('api');
+
   const corsConfig = configService.get('cors');
   const allowedOrigins = corsConfig?.allowedOrigins || corsConfig?.origin || [
     'https://ohmyfood.eu',

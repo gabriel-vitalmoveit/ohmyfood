@@ -97,7 +97,7 @@ railway run npm run db:seed
 
 ### 7. Atualizar Frontend
 
-Use a URL do Railway no build do frontend:
+Use a URL do Railway no build do frontend (sem `/api` no final, o backend adiciona automaticamente):
 
 ```bash
 # Windows PowerShell
@@ -106,6 +106,11 @@ Use a URL do Railway no build do frontend:
 # Linux/Mac
 ./scripts/build-for-cpanel.sh https://backend-production-xxxx.up.railway.app
 ```
+
+**Nota:** O backend tem prefixo global `/api`, então os endpoints serão:
+- `https://seu-backend.up.railway.app/api/restaurants`
+- `https://seu-backend.up.railway.app/api/orders`
+- etc.
 
 ## ✅ Checklist
 
@@ -122,12 +127,14 @@ Use a URL do Railway no build do frontend:
 ## 🔍 Verificar Deploy
 
 ```bash
-# Testar API
-curl https://seu-backend.up.railway.app/docs
+# Testar API (Swagger)
+curl https://seu-backend.up.railway.app/api/docs
 
 # Testar endpoint
-curl https://seu-backend.up.railway.app/restaurants
+curl https://seu-backend.up.railway.app/api/restaurants
 ```
+
+**Nota:** Todos os endpoints têm o prefixo `/api` devido ao `setGlobalPrefix('api')` no backend.
 
 ## 🛠️ Troubleshooting
 

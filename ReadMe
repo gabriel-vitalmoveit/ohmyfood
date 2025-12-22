@@ -60,13 +60,15 @@ Substitua `-d chrome` por `-d android` ou `-d ios` conforme o alvo.
 
 ## 🧰 Backend NestJS
 
+**⚠️ IMPORTANTE:** O backend será deployado no **Railway.app** devido às limitações do cPanel (Node.js 14.21.1 desatualizado). Veja `RAILWAY_DEPLOY.md` para instruções.
+
 ### Stack
 
 - NestJS 10 + TypeScript
-- Prisma ORM + PostgreSQL
+- Prisma ORM + PostgreSQL (Railway)
 - WebSockets (Socket.IO) para chat/tracking
 - Stripe (pagamentos) e Mapbox (geocoding/ETA)
-- Redis (cache, filas e estado temps)
+- Redis (cache, filas e estado temps - opcional)
 
 ### Módulos Principais
 

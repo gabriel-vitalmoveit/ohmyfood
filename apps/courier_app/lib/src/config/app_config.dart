@@ -21,10 +21,10 @@ class AppConfig {
     
     const String env = String.fromEnvironment('ENV', defaultValue: 'dev');
     if (env == 'prod' || env == 'production') {
-      return 'https://api.ohmyfood.eu';
+      return 'https://api.ohmyfood.eu/api';
     }
     
-    return 'http://localhost:3000';
+    return 'http://localhost:3000/api';
   }
   
   static const String productionWebUrl = 'https://estafeta.ohmyfood.eu';

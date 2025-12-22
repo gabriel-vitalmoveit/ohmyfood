@@ -18,7 +18,13 @@ Set-Location apps/customer_app
 flutter clean
 flutter pub get
 if (-not [string]::IsNullOrEmpty($RailwayApiUrl)) {
-    flutter build web --release --dart-define=ENV=prod --dart-define=API_BASE_URL=$RailwayApiUrl
+    # URL da API (Railway já tem /api como prefixo global)
+    $apiUrl = $RailwayApiUrl
+    if (-not [string]::IsNullOrEmpty($RailwayApiUrl)) {
+        # Remove /api se já existir, pois será adicionado pelo backend
+        $apiUrl = $RailwayApiUrl.TrimEnd('/').Replace('/api', '')
+    }
+    flutter build web --release --dart-define=ENV=prod --dart-define=API_BASE_URL=$apiUrl
 } else {
     flutter build web --release --dart-define=ENV=prod
 }
@@ -31,7 +37,13 @@ Set-Location apps/restaurant_app
 flutter clean
 flutter pub get
 if (-not [string]::IsNullOrEmpty($RailwayApiUrl)) {
-    flutter build web --release --dart-define=ENV=prod --dart-define=API_BASE_URL=$RailwayApiUrl
+    # URL da API (Railway já tem /api como prefixo global)
+    $apiUrl = $RailwayApiUrl
+    if (-not [string]::IsNullOrEmpty($RailwayApiUrl)) {
+        # Remove /api se já existir, pois será adicionado pelo backend
+        $apiUrl = $RailwayApiUrl.TrimEnd('/').Replace('/api', '')
+    }
+    flutter build web --release --dart-define=ENV=prod --dart-define=API_BASE_URL=$apiUrl
 } else {
     flutter build web --release --dart-define=ENV=prod
 }
@@ -44,7 +56,13 @@ Set-Location apps/admin_panel
 flutter clean
 flutter pub get
 if (-not [string]::IsNullOrEmpty($RailwayApiUrl)) {
-    flutter build web --release --dart-define=ENV=prod --dart-define=API_BASE_URL=$RailwayApiUrl
+    # URL da API (Railway já tem /api como prefixo global)
+    $apiUrl = $RailwayApiUrl
+    if (-not [string]::IsNullOrEmpty($RailwayApiUrl)) {
+        # Remove /api se já existir, pois será adicionado pelo backend
+        $apiUrl = $RailwayApiUrl.TrimEnd('/').Replace('/api', '')
+    }
+    flutter build web --release --dart-define=ENV=prod --dart-define=API_BASE_URL=$apiUrl
 } else {
     flutter build web --release --dart-define=ENV=prod
 }
