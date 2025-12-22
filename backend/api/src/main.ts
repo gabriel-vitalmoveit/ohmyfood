@@ -54,9 +54,12 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, document);
 
-  const port = configService.get<number>('PORT', 3000);
+  // Usar PORT do Railway ou fallback para 3000
+  // Railway define PORT automaticamente, então usamos process.env.PORT diretamente
+  const port = parseInt(process.env.PORT || '3000', 10);
   await app.listen(port);
   Logger.log(`🚀 OhMyFood API pronta em http://localhost:${port}`, 'Bootstrap');
+  Logger.log(`📡 Porta configurada: ${port} (PORT=${process.env.PORT || 'não definido'})`, 'Bootstrap');
 }
 
 bootstrap();
