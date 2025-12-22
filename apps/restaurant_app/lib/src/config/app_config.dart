@@ -1,20 +1,38 @@
 class AppConfig {
-  // URLs de produção
-  static const String productionApiUrl = 'https://api.ohmyfood.eu';
-  static const String productionWebUrl = 'https://restaurante.ohmyfood.eu';
+  // URL da API - Railway ou variável de ambiente
+  static String get apiUrl {
+    const String envApiUrl = String.fromEnvironment(
+      'API_BASE_URL',
+      defaultValue: '',
+    );
+    
+    if (envApiUrl.isNotEmpty) {
+      return envApiUrl;
+    }
+    
+    const String railwayUrl = String.fromEnvironment(
+      'RAILWAY_API_URL',
+      defaultValue: '',
+    );
+    
+    if (railwayUrl.isNotEmpty) {
+      return railwayUrl;
+    }
+    
+    const String env = String.fromEnvironment('ENV', defaultValue: 'dev');
+    if (env == 'prod' || env == 'production') {
+      return 'https://api.ohmyfood.eu';
+    }
+    
+    return 'http://localhost:3000';
+  }
   
-  // URLs de desenvolvimento
-  static const String developmentApiUrl = 'http://localhost:3000';
+  static const String productionWebUrl = 'https://restaurante.ohmyfood.eu';
   static const String developmentWebUrl = 'http://localhost:8081';
   
-  // Determina se está em produção
   static bool get isProduction {
     const String env = String.fromEnvironment('ENV', defaultValue: 'dev');
     return env == 'prod' || env == 'production';
-  }
-  
-  static String get apiUrl {
-    return isProduction ? productionApiUrl : developmentApiUrl;
   }
   
   static String get webUrl {

@@ -10,8 +10,20 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   const corsConfig = configService.get('cors');
+  const allowedOrigins = corsConfig?.allowedOrigins || corsConfig?.origin || [
+    'https://ohmyfood.eu',
+    'https://www.ohmyfood.eu',
+    'https://restaurante.ohmyfood.eu',
+    'https://admin.ohmyfood.eu',
+    'https://estafeta.ohmyfood.eu',
+    'http://localhost:8080',
+    'http://localhost:8081',
+    'http://localhost:8082',
+    'http://localhost:8083',
+  ];
+  
   app.enableCors({
-    origin: corsConfig?.allowedOrigins || corsConfig?.origin || '*',
+    origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],

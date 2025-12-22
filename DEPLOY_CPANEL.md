@@ -1,6 +1,8 @@
 # 🚀 Guia de Deploy no cPanel - OhMyFood
 
-Este guia detalha todos os passos necessários para fazer deploy completo no cPanel.
+**⚠️ IMPORTANTE:** Devido às limitações do cPanel (Node.js 14.21.1 desatualizado), o **backend será deployado no Railway.app** e apenas o **frontend Flutter Web será deployado no cPanel**.
+
+Este guia detalha todos os passos necessários para fazer deploy completo.
 
 ## ✅ Checklist Pré-Deploy
 
@@ -16,9 +18,25 @@ Este guia detalha todos os passos necessários para fazer deploy completo no cPa
 
 ---
 
-## 📦 Passo 1: Build das Aplicações
+## 📦 Passo 1: Deploy do Backend no Railway
 
-### Flutter Web Apps
+**O backend NÃO será deployado no cPanel.** Siga o guia em `RAILWAY_DEPLOY.md` para fazer deploy no Railway.app.
+
+Após o deploy, você terá uma URL como: `https://backend-production-xxxx.up.railway.app`
+
+## 📦 Passo 2: Build das Aplicações Flutter
+
+### Opção A: Script Automatizado (Recomendado)
+
+```bash
+# Windows PowerShell
+.\scripts\build-for-cpanel.ps1 https://seu-backend.up.railway.app
+
+# Linux/Mac
+./scripts/build-for-cpanel.sh https://seu-backend.up.railway.app
+```
+
+### Opção B: Manual
 
 Execute estes comandos **antes** de fazer upload:
 
@@ -27,31 +45,22 @@ Execute estes comandos **antes** de fazer upload:
 cd apps/customer_app
 flutter clean
 flutter pub get
-flutter build web --dart-define=ENV=prod --release
+flutter build web --release --dart-define=ENV=prod --dart-define=API_BASE_URL=https://seu-backend.up.railway.app
 # Output: build/web/
 
 # 2. Restaurant App (restaurante.ohmyfood.eu)
 cd ../restaurant_app
 flutter clean
 flutter pub get
-flutter build web --dart-define=ENV=prod --release
+flutter build web --release --dart-define=ENV=prod --dart-define=API_BASE_URL=https://seu-backend.up.railway.app
 # Output: build/web/
 
 # 3. Admin Panel (admin.ohmyfood.eu)
 cd ../admin_panel
 flutter clean
 flutter pub get
-flutter build web --dart-define=ENV=prod --release
+flutter build web --release --dart-define=ENV=prod --dart-define=API_BASE_URL=https://seu-backend.up.railway.app
 # Output: build/web/
-```
-
-### Backend NestJS
-
-```bash
-cd backend/api
-npm install --production
-npm run build
-# Output: dist/
 ```
 
 ---
@@ -77,92 +86,33 @@ public_html/
 
 ### Upload via File Manager
 
-1. **Backend API:**
-   - Upload pasta `backend/api/dist/` → `public_html/api/dist/`
-   - Upload `backend/api/package.json` → `public_html/api/`
-   - Upload `backend/api/prisma/` → `public_html/api/prisma/`
-   - Criar `.env` em `public_html/api/.env`
+**⚠️ NOTA:** Backend está no Railway, não precisa fazer upload!
 
-2. **Customer App:**
-   - Upload conteúdo de `apps/customer_app/build/web/` → `public_html/customer/`
+1. **Customer App:**
+   - Upload **TODO o conteúdo** de `apps/customer_app/build/web/` → `public_html/`
+   - Copiar `public_html/.htaccess` para `public_html/.htaccess`
 
-3. **Restaurant App:**
-   - Upload conteúdo de `apps/restaurant_app/build/web/` → `public_html/restaurant/`
+2. **Restaurant App:**
+   - Criar pasta `public_html/restaurant/` (se não existir)
+   - Upload **TODO o conteúdo** de `apps/restaurant_app/build/web/` → `public_html/restaurant/`
+   - Copiar `public_html/.htaccess` para `public_html/restaurant/.htaccess`
 
-4. **Admin Panel:**
-   - Upload conteúdo de `apps/admin_panel/build/web/` → `public_html/admin/`
+3. **Admin Panel:**
+   - Criar pasta `public_html/admin/` (se não existir)
+   - Upload **TODO o conteúdo** de `apps/admin_panel/build/web/` → `public_html/admin/`
+   - Copiar `public_html/.htaccess` para `public_html/admin/.htaccess`
 
 ---
 
 ## ⚙️ Passo 3: Configuração no cPanel
 
-### 3.1. Base de Dados PostgreSQL
+### 3.1. Base de Dados
 
-1. **Criar Base de Dados:**
-   - cPanel → PostgreSQL Databases
-   - Criar database: `ohmyfood_db`
-   - Criar user: `ohmyfood_user`
-   - Atribuir user à database
+**⚠️ Base de dados está no Railway PostgreSQL.** Não precisa configurar no cPanel.
 
-2. **Executar SQL:**
-   - Gerar SQL: `cd backend/api && npm run db:generate-sql`
-   - Copiar conteúdo de `schema.sql`
-   - cPanel → PostgreSQL → SQL Tool
-   - Colar e executar SQL
-
-3. **Seed (Opcional):**
-   - Via SSH: `cd api && npm run db:seed`
-
-### 3.2. Variáveis de Ambiente (.env)
-
-Criar `public_html/api/.env`:
-
-```env
-# Porta (cPanel geralmente usa 3000 ou porta específica)
-PORT=3000
-
-# Database
-DATABASE_URL=postgresql://ohmyfood_user:password@localhost:5432/ohmyfood_db
-
-# CORS - URLs permitidas
-CORS_ORIGINS=https://ohmyfood.eu,https://www.ohmyfood.eu,https://admin.ohmyfood.eu,https://restaurante.ohmyfood.eu
-
-# JWT Secrets (GERE NOVOS!)
-JWT_ACCESS_SECRET=seu-secret-super-seguro-aqui
-JWT_REFRESH_SECRET=seu-refresh-secret-super-seguro-aqui
-JWT_ACCESS_TTL=15m
-JWT_REFRESH_TTL=7d
-
-# Stripe
-STRIPE_API_KEY=sk_live_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-
-# Mapbox
-MAPBOX_API_KEY=pk.eyJ1...
-
-# Redis (se disponível)
-REDIS_URL=redis://localhost:6379
-
-# File Storage
-FILE_BUCKET_URL=https://seu-bucket-url
-```
-
-### 3.3. Node.js App (Backend)
-
-1. **Criar Node.js App:**
-   - cPanel → Node.js App
-   - Node.js Version: 18.x ou 20.x
-   - Application Root: `api`
-   - Application URL: `api.ohmyfood.eu` (ou subdomínio)
-   - Application Startup File: `dist/main.js`
-   - Environment Variables: Copiar do `.env`
-
-2. **Instalar Dependências:**
-   - Na interface Node.js App, clique em "Run NPM Install"
-   - Ou via SSH: `cd api && npm install --production`
-
-3. **Iniciar App:**
-   - Clique em "Start App" na interface Node.js
+Se precisar acessar a base de dados:
+- Use Prisma Studio localmente apontando para `DATABASE_URL` do Railway
+- Ou use Railway CLI: `railway connect postgres`
 
 ### 3.4. Domínios e Subdomínios
 
