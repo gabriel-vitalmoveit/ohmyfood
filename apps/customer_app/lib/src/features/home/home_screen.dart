@@ -4,8 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:shared_models/shared_models.dart';
 
-import '../../data/mock_data.dart';
+import '../../services/providers/api_providers.dart';
 import '../cart/controllers/cart_controller.dart';
 
 class HomeScreen extends HookConsumerWidget {
@@ -17,11 +18,42 @@ class HomeScreen extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedCategory = ref.watch(_selectedCategoryProvider);
     final cart = ref.watch(cartControllerProvider);
+    final restaurantsAsync = ref.watch(restaurantsProvider);
 
-    final restaurants = lisbonRestaurants.where((restaurant) {
-      if (selectedCategory == 'Todos') return true;
-      return restaurant.restaurant.categories.contains(selectedCategory);
-    }).toList();
+    // Extrair categorias únicas dos restaurantes
+    final allCategories = <String>['Todos'];
+    
+    return restaurantsAsync.when(
+      data: (restaurants) {
+        // Adicionar categorias únicas
+        for (final restaurant in restaurants) {
+          for (final category in restaurant.categories) {
+            if (!allCategories.contains(category)) {
+              allCategories.add(category);
+            }
+          }
+        }
+
+        final filteredRestaurants = restaurants.where((restaurant) {
+          if (selectedCategory == 'Todos') return true;
+          return restaurant.categories.contains(selectedCategory);
+        }).toList();
+
+        return _buildContent(context, ref, cart, filteredRestaurants, allCategories, selectedCategory);
+      },
+      loading: () => _buildLoading(context, ref, cart),
+      error: (error, stack) => _buildError(context, ref, cart, error),
+    );
+  }
+
+  Widget _buildContent(
+    BuildContext context,
+    WidgetRef ref,
+    dynamic cart,
+    List<RestaurantModel> restaurants,
+    List<String> categories,
+    String selectedCategory,
+  ) {
 
     return OhMyFoodAppScaffold(
       title: 'Olá, Ana 👋',
@@ -78,7 +110,8 @@ class HomeScreen extends HookConsumerWidget {
                 OhMyFoodSection(
                   title: 'Categorias',
                   child: OhMyFoodChipPicker<String>(
-                    items: const ['Todos', ...homeCategories],
+                    items: categories,
+                    labelBuilder: (category) => category,
                     selected: selectedCategory,
                     onSelected: (value) => ref.read(_selectedCategoryProvider.notifier).state = value,
                   ),
@@ -104,36 +137,140 @@ class HomeScreen extends HookConsumerWidget {
                   ),
                 ),
                 OhMyFoodSection(
-                  title: 'Sugestões para si',
-                  child: Column(
-                    children: [
-                      for (int i = 0; i < restaurants.length; i++)
-                        TweenAnimationBuilder<double>(
-                          tween: Tween(begin: 0.0, end: 1.0),
-                          duration: Duration(milliseconds: 300 + (i * 100)),
-                          curve: Curves.easeOut,
-                          builder: (context, value, child) {
-                            return Opacity(
-                              opacity: value,
-                              child: Transform.translate(
-                                offset: Offset(0, 20 * (1 - value)),
-                                child: child,
+                  title: restaurants.isEmpty ? 'Sem restaurantes' : 'Sugestões para si',
+                  child: restaurants.isEmpty
+                      ? const OhMyFoodEmptyState(
+                          title: 'Nenhum restaurante encontrado',
+                          message: 'Tente outra categoria ou verifique sua conexão.',
+                        )
+                      : Column(
+                          children: [
+                            for (int i = 0; i < restaurants.length; i++)
+                              TweenAnimationBuilder<double>(
+                                tween: Tween(begin: 0.0, end: 1.0),
+                                duration: Duration(milliseconds: 300 + (i * 100)),
+                                curve: Curves.easeOut,
+                                builder: (context, value, child) {
+                                  return Opacity(
+                                    opacity: value,
+                                    child: Transform.translate(
+                                      offset: Offset(0, 20 * (1 - value)),
+                                      child: child,
+                                    ),
+                                  );
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: OhMyFoodSpacing.md),
+                                  child: _RestaurantCard(restaurant: restaurants[i]),
+                                ),
                               ),
-                            );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.only(bottom: OhMyFoodSpacing.md),
-                            child: _RestaurantCard(restaurant: restaurants[i]),
-                          ),
+                          ],
                         ),
-                    ],
-                  ),
                 ),
                 const SizedBox(height: OhMyFoodSpacing.xl),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLoading(BuildContext context, WidgetRef ref, dynamic cart) {
+    return OhMyFoodAppScaffold(
+      title: 'Olá, Ana 👋',
+      actions: [
+        IconButton(
+          onPressed: () => context.go('/home/cart'),
+          icon: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: OhMyFoodColors.neutral100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.shopping_bag_outlined, size: 22),
+              ),
+              if (cart.items.isNotEmpty)
+                Positioned(
+                  right: -4,
+                  top: -4,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: OhMyFoodColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      cart.items.length.toString(),
+                      style: OhMyFoodTypography.caption.copyWith(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+      body: const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+  }
+
+  Widget _buildError(BuildContext context, WidgetRef ref, dynamic cart, Object error) {
+    return OhMyFoodAppScaffold(
+      title: 'Olá, Ana 👋',
+      actions: [
+        IconButton(
+          onPressed: () => context.go('/home/cart'),
+          icon: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: OhMyFoodColors.neutral100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.shopping_bag_outlined, size: 22),
+              ),
+              if (cart.items.isNotEmpty)
+                Positioned(
+                  right: -4,
+                  top: -4,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: OhMyFoodColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      cart.items.length.toString(),
+                      style: OhMyFoodTypography.caption.copyWith(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+      body: OhMyFoodEmptyState(
+        title: 'Erro ao carregar restaurantes',
+        message: error.toString(),
+        action: ElevatedButton(
+          onPressed: () => ref.invalidate(restaurantsProvider),
+          child: const Text('Tentar novamente'),
+        ),
       ),
     );
   }
@@ -327,12 +464,12 @@ class _PromoCard extends StatelessWidget {
 class _RestaurantCard extends HookConsumerWidget {
   const _RestaurantCard({required this.restaurant});
 
-  final RestaurantDetailViewModel restaurant;
+  final RestaurantModel restaurant;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return OhMyFoodCard(
-      onTap: () => context.go('/home/restaurants/${restaurant.restaurant.id}'),
+      onTap: () => context.go('/home/restaurants/${restaurant.id}'),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
@@ -345,7 +482,7 @@ class _RestaurantCard extends HookConsumerWidget {
               child: Stack(
                 children: [
                   CachedNetworkImage(
-                    imageUrl: restaurant.coverImage,
+                    imageUrl: restaurant.coverImageUrl ?? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4',
                     width: 100,
                     height: 100,
                     fit: BoxFit.cover,
@@ -365,23 +502,6 @@ class _RestaurantCard extends HookConsumerWidget {
                       child: const Icon(Icons.restaurant, color: OhMyFoodColors.neutral400),
                     ),
                   ),
-                  if (restaurant.isFavourite)
-                    Positioned(
-                      top: 6,
-                      right: 6,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.favorite,
-                          color: Colors.red,
-                          size: 16,
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -391,7 +511,7 @@ class _RestaurantCard extends HookConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    restaurant.restaurant.name,
+                    restaurant.name,
                     style: OhMyFoodTypography.bodyBold.copyWith(
                       fontSize: 16,
                     ),
@@ -417,7 +537,7 @@ class _RestaurantCard extends HookConsumerWidget {
                             ),
                             const SizedBox(width: 2),
                             Text(
-                              restaurant.rating.toStringAsFixed(1),
+                              '4.5', // TODO: Get from API
                               style: OhMyFoodTypography.caption.copyWith(
                                 color: OhMyFoodColors.primaryDark,
                                 fontWeight: FontWeight.w600,
@@ -429,21 +549,7 @@ class _RestaurantCard extends HookConsumerWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '${restaurant.deliveryMinutes} min',
-                        style: OhMyFoodTypography.caption.copyWith(
-                          color: OhMyFoodColors.neutral600,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '•',
-                        style: OhMyFoodTypography.caption.copyWith(
-                          color: OhMyFoodColors.neutral400,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${(restaurant.deliveryFeeCents / 100).toStringAsFixed(2)}€',
+                        '${restaurant.averagePreparationMinutes} min',
                         style: OhMyFoodTypography.caption.copyWith(
                           color: OhMyFoodColors.neutral600,
                         ),
@@ -454,7 +560,7 @@ class _RestaurantCard extends HookConsumerWidget {
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
-                    children: restaurant.restaurant.categories.take(2).map((category) {
+                    children: restaurant.categories.take(2).map((category) {
                       return OhMyFoodBadge.info(category);
                     }).toList(),
                   ),

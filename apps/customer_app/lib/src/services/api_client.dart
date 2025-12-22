@@ -3,6 +3,9 @@ import 'package:http/http.dart' as http;
 import 'package:shared_models/shared_models.dart';
 import '../config/app_config.dart';
 
+// Temporary user ID - should come from auth later
+const String _tempUserId = 'temp-user-1';
+
 class ApiClient {
   ApiClient({String? baseUrl}) : _baseUrl = baseUrl ?? AppConfig.apiUrl;
 
@@ -41,7 +44,8 @@ class ApiClient {
 
   Future<List<dynamic>> getMenuItems(String restaurantId) async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/menu/restaurant/$restaurantId'));
+      // Backend usa: /api/restaurants/:restaurantId/menu
+      final response = await http.get(Uri.parse('$_baseUrl/restaurants/$restaurantId/menu'));
       
       if (response.statusCode == 200) {
         return json.decode(response.body);
@@ -52,10 +56,25 @@ class ApiClient {
     }
   }
 
-  Future<Map<String, dynamic>> createOrder(Map<String, dynamic> orderData) async {
+  Future<List<OrderModel>> getUserOrders(String userId) async {
     try {
+      final response = await http.get(Uri.parse('$_baseUrl/orders/user/$userId'));
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((json) => OrderModel.fromJson(json)).toList();
+      }
+      throw Exception('Failed to load orders: ${response.statusCode}');
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> createOrder(String userId, Map<String, dynamic> orderData) async {
+    try {
+      // Backend usa: POST /api/orders/user/:userId
       final response = await http.post(
-        Uri.parse('$_baseUrl/orders'),
+        Uri.parse('$_baseUrl/orders/user/$userId'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(orderData),
       );

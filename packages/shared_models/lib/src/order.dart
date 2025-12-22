@@ -7,7 +7,31 @@ enum OrderStatus {
   pickup,
   onTheWay,
   delivered,
-  cancelled,
+  cancelled;
+
+  static OrderStatus fromString(String status) {
+    switch (status.toLowerCase()) {
+      case 'draft':
+        return OrderStatus.draft;
+      case 'awaitingacceptance':
+      case 'awaiting_acceptance':
+        return OrderStatus.awaitingAcceptance;
+      case 'preparing':
+        return OrderStatus.preparing;
+      case 'pickup':
+        return OrderStatus.pickup;
+      case 'ontheway':
+      case 'on_the_way':
+        return OrderStatus.onTheWay;
+      case 'delivered':
+        return OrderStatus.delivered;
+      case 'cancelled':
+      case 'canceled':
+        return OrderStatus.cancelled;
+      default:
+        return OrderStatus.draft;
+    }
+  }
 }
 
 class OrderItemModel {
@@ -26,6 +50,17 @@ class OrderItemModel {
   final List<String>? addons;
 
   int get totalCents => unitPriceCents * quantity;
+
+  factory OrderItemModel.fromJson(Map<String, dynamic> json) {
+    return OrderItemModel(
+      menuItemId: json['menuItemId'] as String? ?? json['menuItem']?['id'] as String? ?? '',
+      name: json['name'] as String? ?? json['menuItem']?['name'] as String? ?? '',
+      quantity: json['quantity'] as int? ?? 1,
+      unitPriceCents: (json['unitPriceCents'] as num?)?.toInt() ?? 
+                      (json['menuItem']?['priceCents'] as num?)?.toInt() ?? 0,
+      addons: (json['addons'] as List<dynamic>?)?.map((e) => e as String).toList(),
+    );
+  }
 }
 
 class OrderModel {
@@ -61,4 +96,24 @@ class OrderModel {
   int get subtotalCents => items
       .map((item) => item.totalCents)
       .sum;
+
+  factory OrderModel.fromJson(Map<String, dynamic> json) {
+    return OrderModel(
+      id: json['id'] as String,
+      userId: json['userId'] as String,
+      restaurantId: json['restaurantId'] as String,
+      status: OrderStatus.fromString(json['status'] as String? ?? 'draft'),
+      items: (json['items'] as List<dynamic>?)
+              ?.map((item) => OrderItemModel.fromJson(item as Map<String, dynamic>))
+              .toList() ?? [],
+      itemsTotalCents: (json['itemsTotalCents'] as num?)?.toInt() ?? 0,
+      deliveryFeeCents: (json['deliveryFeeCents'] as num?)?.toInt() ?? 0,
+      serviceFeeCents: (json['serviceFeeCents'] as num?)?.toInt() ?? 0,
+      totalCents: (json['totalCents'] as num?)?.toInt() ?? 0,
+      createdAt: json['createdAt'] != null 
+          ? DateTime.parse(json['createdAt'] as String)
+          : DateTime.now(),
+      courierId: json['courierId'] as String?,
+    );
+  }
 }
