@@ -82,10 +82,13 @@ class CreateOrderNotifier extends StateNotifier<AsyncValue<Map<String, dynamic>?
     try {
       final apiClient = ref.read(apiClientProvider);
       final userIdAsync = ref.read(currentUserIdProvider);
-      final userId = await userIdAsync.value;
+      
+      // Aguardar userId
+      final userId = await userIdAsync.future;
       if (userId == null) {
         throw Exception('Usuário não autenticado');
       }
+      
       final order = await apiClient.createOrder(userId, orderData);
       state = AsyncValue.data(order);
       // Invalida a lista de pedidos após criar novo pedido

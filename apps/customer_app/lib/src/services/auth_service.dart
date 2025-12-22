@@ -62,27 +62,28 @@ class AuthService {
     }
   }
 
-  Future<AuthTokens> refreshToken(String refreshToken) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/auth/refresh'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $refreshToken',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return AuthTokens.fromJson(data['tokens']);
-      } else {
-        throw AuthException('Erro ao renovar token');
-      }
-    } catch (e) {
-      if (e is AuthException) rethrow;
-      throw AuthException('Erro de conexão: ${e.toString()}');
-    }
-  }
+  // TODO: Implementar quando backend adicionar endpoint de refresh
+  // Future<AuthTokens> refreshToken(String refreshToken) async {
+  //   try {
+  //     final response = await http.post(
+  //       Uri.parse('$_baseUrl/auth/refresh'),
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         'Authorization': 'Bearer $refreshToken',
+  //       },
+  //     );
+  //
+  //     if (response.statusCode == 200) {
+  //       final data = json.decode(response.body);
+  //       return AuthTokens.fromJson(data['tokens']);
+  //     } else {
+  //       throw AuthException('Erro ao renovar token');
+  //     }
+  //   } catch (e) {
+  //     if (e is AuthException) rethrow;
+  //     throw AuthException('Erro de conexão: ${e.toString()}');
+  //   }
+  // }
 }
 
 class AuthResponse {
