@@ -19,9 +19,10 @@ final onboardingCompletedProvider = StateProvider<bool>((ref) => false);
 
 final routerProvider = Provider<GoRouter>((ref) {
   final onboardingCompleted = ref.watch(onboardingCompletedProvider);
+  final authState = ref.watch(authStateProvider);
 
   return GoRouter(
-    initialLocation: onboardingCompleted ? '/home' : '/onboarding',
+    initialLocation: _getInitialLocation(onboardingCompleted, authState.isAuthenticated),
     refreshListenable: _RouterRefresh(ref),
     routes: [
       GoRoute(
