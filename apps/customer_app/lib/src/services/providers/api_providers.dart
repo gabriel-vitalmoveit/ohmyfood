@@ -83,8 +83,13 @@ class CreateOrderNotifier extends StateNotifier<AsyncValue<Map<String, dynamic>?
       final apiClient = ref.read(apiClientProvider);
       final userIdAsync = ref.read(currentUserIdProvider);
       
-      // Aguardar userId
-      final userId = await userIdAsync.future;
+      // Aguardar userId usando when
+      final userId = await userIdAsync.when(
+        data: (id) => Future.value(id),
+        loading: () => Future<String?>.value(null),
+        error: (_, __) => Future<String?>.value(null),
+      );
+      
       if (userId == null) {
         throw Exception('Usuário não autenticado');
       }
