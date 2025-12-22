@@ -1,10 +1,12 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_models/shared_models.dart';
 import '../api_client.dart';
+import 'auth_providers.dart';
 
-// Provider para ApiClient (singleton)
+// Provider para ApiClient (singleton) - agora com auth
 final apiClientProvider = Provider<ApiClient>((ref) {
-  return ApiClient();
+  final authRepository = ref.watch(authRepositoryProvider);
+  return ApiClient(authRepository: authRepository);
 });
 
 // Provider para lista de restaurantes
@@ -41,13 +43,22 @@ final menuItemsProvider = FutureProvider.family<List<dynamic>, String>((ref, res
   }
 });
 
-// Temporary user ID - should come from auth later
-final currentUserIdProvider = StateProvider<String>((ref) => 'temp-user-1');
+// User ID do usuário autenticado
+final currentUserIdProvider = FutureProvider<String?>((ref) async {
+  final authState = ref.watch(authStateProvider);
+  // Verificar se está autenticado
+  if (!authState.isAuthenticated) return null;
+  
+  final repository = ref.read(authRepositoryProvider);
+  return await repository.getUserId();
+});
 
 // Provider para pedidos do usuário
 final userOrdersProvider = FutureProvider<List<OrderModel>>((ref) async {
   final apiClient = ref.watch(apiClientProvider);
-  final userId = ref.watch(currentUserIdProvider);
+  final userIdAsync = ref.watch(currentUserIdProvider);
+  final userId = await userIdAsync.value;
+  if (userId == null) return [];
   try {
     final orders = await apiClient.getUserOrders(userId);
     return orders;
@@ -70,7 +81,11 @@ class CreateOrderNotifier extends StateNotifier<AsyncValue<Map<String, dynamic>?
     state = const AsyncValue.loading();
     try {
       final apiClient = ref.read(apiClientProvider);
-      final userId = ref.read(currentUserIdProvider);
+      final userIdAsync = ref.read(currentUserIdProvider);
+      final userId = await userIdAsync.value;
+      if (userId == null) {
+        throw Exception('Usuário não autenticado');
+      }
       final order = await apiClient.createOrder(userId, orderData);
       state = AsyncValue.data(order);
       // Invalida a lista de pedidos após criar novo pedido

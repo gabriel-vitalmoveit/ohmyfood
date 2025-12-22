@@ -1,6 +1,8 @@
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import '../../services/providers/auth_providers.dart';
 
 class ProfileScreen extends HookConsumerWidget {
   const ProfileScreen({super.key});
@@ -9,18 +11,25 @@ class ProfileScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authStateProvider);
+    final userEmail = authState.email ?? 'Usuário';
+    
     return OhMyFoodAppScaffold(
       title: 'Perfil',
       body: ListView(
         padding: const EdgeInsets.only(top: OhMyFoodSpacing.lg),
         children: [
           ListTile(
-            leading: const CircleAvatar(
+            leading: CircleAvatar(
               radius: 30,
-              backgroundImage: NetworkImage('https://images.unsplash.com/photo-1535713875002-d1d0cf377fde'),
+              backgroundColor: OhMyFoodColors.primary,
+              child: Text(
+                userEmail.isNotEmpty ? userEmail[0].toUpperCase() : 'U',
+                style: OhMyFoodTypography.titleMd.copyWith(color: Colors.white),
+              ),
             ),
-            title: Text('Ana Silva', style: OhMyFoodTypography.bodyBold),
-            subtitle: Text('ana.silva@example.com', style: OhMyFoodTypography.caption),
+            title: Text(userEmail, style: OhMyFoodTypography.bodyBold),
+            subtitle: Text(userEmail, style: OhMyFoodTypography.caption),
             trailing: TextButton(onPressed: () {}, child: const Text('Editar')),
           ),
           const Divider(height: OhMyFoodSpacing.xl),
@@ -79,9 +88,35 @@ class ProfileScreen extends HookConsumerWidget {
             onTap: () {},
           ),
           ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('Terminar sessão'),
-            onTap: () {},
+            leading: const Icon(Icons.logout, color: Colors.red),
+            title: const Text('Terminar sessão', style: TextStyle(color: Colors.red)),
+            onTap: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Terminar sessão'),
+                  content: const Text('Tens a certeza que queres terminar a sessão?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancelar'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                      child: const Text('Terminar'),
+                    ),
+                  ],
+                ),
+              );
+              
+              if (confirmed == true) {
+                await ref.read(authStateProvider.notifier).logout();
+                if (context.mounted) {
+                  context.go('/login');
+                }
+              }
+            },
           ),
         ],
       ),

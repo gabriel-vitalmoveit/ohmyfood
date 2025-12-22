@@ -2,21 +2,41 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_models/shared_models.dart';
 import '../config/app_config.dart';
-
-// Temporary user ID - should come from auth later
-const String _tempUserId = 'temp-user-1';
+import 'auth_repository.dart';
 
 class ApiClient {
-  ApiClient({String? baseUrl}) : _baseUrl = baseUrl ?? AppConfig.apiUrl;
+  ApiClient({
+    String? baseUrl,
+    AuthRepository? authRepository,
+  })  : _baseUrl = baseUrl ?? AppConfig.apiUrl,
+        _authRepository = authRepository ?? AuthRepository();
 
   final String _baseUrl;
+  final AuthRepository? _authRepository;
+
+  Future<Map<String, String>> _getHeaders() async {
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+    };
+
+    // Adicionar token de autenticação se disponível
+    if (_authRepository != null) {
+      final token = await _authRepository!.getAccessToken();
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+    }
+
+    return headers;
+  }
 
   Future<List<RestaurantModel>> getRestaurants({String? category}) async {
     try {
       final uri = Uri.parse('$_baseUrl/restaurants').replace(
         queryParameters: category != null ? {'category': category} : null,
       );
-      final response = await http.get(uri);
+      final headers = await _getHeaders();
+      final response = await http.get(uri, headers: headers);
       
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
@@ -31,7 +51,8 @@ class ApiClient {
 
   Future<RestaurantModel> getRestaurantById(String id) async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/restaurants/$id'));
+      final headers = await _getHeaders();
+      final response = await http.get(Uri.parse('$_baseUrl/restaurants/$id'), headers: headers);
       
       if (response.statusCode == 200) {
         return RestaurantModel.fromJson(json.decode(response.body));
@@ -45,7 +66,8 @@ class ApiClient {
   Future<List<dynamic>> getMenuItems(String restaurantId) async {
     try {
       // Backend usa: /api/restaurants/:restaurantId/menu
-      final response = await http.get(Uri.parse('$_baseUrl/restaurants/$restaurantId/menu'));
+      final headers = await _getHeaders();
+      final response = await http.get(Uri.parse('$_baseUrl/restaurants/$restaurantId/menu'), headers: headers);
       
       if (response.statusCode == 200) {
         return json.decode(response.body);
@@ -58,7 +80,8 @@ class ApiClient {
 
   Future<List<OrderModel>> getUserOrders(String userId) async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/orders/user/$userId'));
+      final headers = await _getHeaders();
+      final response = await http.get(Uri.parse('$_baseUrl/orders/user/$userId'), headers: headers);
       
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
@@ -73,9 +96,10 @@ class ApiClient {
   Future<Map<String, dynamic>> createOrder(String userId, Map<String, dynamic> orderData) async {
     try {
       // Backend usa: POST /api/orders/user/:userId
+      final headers = await _getHeaders();
       final response = await http.post(
         Uri.parse('$_baseUrl/orders/user/$userId'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: json.encode(orderData),
       );
       
