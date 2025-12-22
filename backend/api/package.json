@@ -12,7 +12,9 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
-    "db:seed": "ts-node prisma/seed.ts"
+    "prisma:deploy": "prisma migrate deploy",
+    "db:seed": "ts-node prisma/seed.ts",
+    "db:generate-sql": "prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > schema.sql"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
