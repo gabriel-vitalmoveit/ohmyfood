@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import 'src/features/analytics/analytics_screen.dart';
+import 'src/features/auth/login_screen.dart';
 import 'src/features/dashboard/restaurant_dashboard_screen.dart';
 import 'src/features/menu/menu_management_screen.dart';
 import 'src/features/onboarding/restaurant_onboarding_screen.dart';
@@ -15,11 +16,17 @@ final restaurantOnboardingProvider = StateProvider<bool>((ref) => false);
 
 final restaurantRouterProvider = Provider<GoRouter>((ref) {
   final completed = ref.watch(restaurantOnboardingProvider);
+  final authState = ref.watch(authStateProvider);
 
   return GoRouter(
-    initialLocation: completed ? '/dashboard' : '/onboarding',
+    initialLocation: _getInitialLocation(completed, authState.isAuthenticated),
     refreshListenable: _RestaurantRouterNotifier(ref),
     routes: [
+      GoRoute(
+        path: '/login',
+        name: LoginScreen.routeName,
+        builder: (context, state) => const LoginScreen(),
+      ),
       GoRoute(
         path: '/onboarding',
         builder: (context, state) => const RestaurantOnboardingScreen(),
@@ -65,17 +72,44 @@ final restaurantRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
     redirect: (context, state) {
-      final onboarding = state.matchedLocation == '/onboarding';
-      if (!completed && !onboarding) return '/onboarding';
-      if (completed && onboarding) return '/dashboard';
+      final isLogin = state.matchedLocation == '/login';
+      final isOnboarding = state.matchedLocation == '/onboarding';
+      
+      // Se não está autenticado e não está em login/onboarding, redirecionar para login
+      if (!authState.isAuthenticated && !isLogin && !isOnboarding) {
+        return '/login';
+      }
+      
+      // Se está autenticado e está em login, redirecionar para dashboard
+      if (authState.isAuthenticated && isLogin) {
+        return '/dashboard';
+      }
+      
+      // Se não completou onboarding e não está em onboarding/login
+      if (!completed && !isOnboarding && !isLogin) {
+        return '/onboarding';
+      }
+      
+      // Se completou onboarding mas está na tela de onboarding
+      if (completed && isOnboarding) {
+        return authState.isAuthenticated ? '/dashboard' : '/login';
+      }
+      
       return null;
     },
   );
 });
 
+String _getInitialLocation(bool onboardingCompleted, bool isAuthenticated) {
+  if (!isAuthenticated) return '/login';
+  if (!onboardingCompleted) return '/onboarding';
+  return '/dashboard';
+}
+
 class _RestaurantRouterNotifier extends ChangeNotifier {
   _RestaurantRouterNotifier(this.ref) {
     ref.listen<bool>(restaurantOnboardingProvider, (_, __) => notifyListeners());
+    ref.listen<AuthState>(authStateProvider, (_, __) => notifyListeners());
   }
 
   final Ref ref;

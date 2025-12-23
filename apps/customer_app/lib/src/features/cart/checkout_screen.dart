@@ -4,6 +4,25 @@ import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../cart/controllers/cart_controller.dart';
+import '../../services/api_client.dart';
+import '../../services/providers/api_providers.dart';
+import '../../services/providers/auth_providers.dart';
+
+final selectedAddressProvider = StateProvider<Map<String, dynamic>?>((ref) => null);
+final addressesProviderCheckout = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final apiClient = ref.watch(apiClientProvider);
+  try {
+    final addresses = await apiClient.getAddresses();
+    // Selecionar morada padrão ou primeira
+    if (addresses.isNotEmpty) {
+      final defaultAddress = addresses.firstWhere((a) => a['isDefault'] == true, orElse: () => addresses.first);
+      ref.read(selectedAddressProvider.notifier).state = defaultAddress;
+    }
+    return addresses;
+  } catch (e) {
+    return [];
+  }
+});
 
 class CheckoutScreen extends HookConsumerWidget {
   const CheckoutScreen({super.key});
@@ -14,6 +33,8 @@ class CheckoutScreen extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final cart = ref.watch(cartControllerProvider);
     final controller = ref.read(cartControllerProvider.notifier);
+    final addressesAsync = ref.watch(addressesProviderCheckout);
+    final selectedAddress = ref.watch(selectedAddressProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -34,13 +55,59 @@ class CheckoutScreen extends HookConsumerWidget {
               ),
             ),
             const SizedBox(height: OhMyFoodSpacing.sm),
-            _InfoCard(
-              icon: Icons.home_rounded,
-              iconColor: OhMyFoodColors.primary,
-              title: 'Alameda Dom Afonso Henriques 5B',
-              subtitle: '3.º Esquerdo • Campainha: OHMYFOOD',
-              actionLabel: 'Editar',
-              onAction: () {},
+            addressesAsync.when(
+              data: (addresses) {
+                if (addresses.isEmpty) {
+                  return Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(OhMyFoodSpacing.md),
+                      child: Column(
+                        children: [
+                          Text('Nenhuma morada cadastrada', style: OhMyFoodTypography.body),
+                          const SizedBox(height: OhMyFoodSpacing.sm),
+                          ElevatedButton.icon(
+                            onPressed: () => context.push('/profile/addresses/new'),
+                            icon: const Icon(Icons.add),
+                            label: const Text('Adicionar morada'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                
+                return _InfoCard(
+                  icon: Icons.home_rounded,
+                  iconColor: OhMyFoodColors.primary,
+                  title: selectedAddress?['label'] ?? addresses.first['label'] ?? 'Morada',
+                  subtitle: selectedAddress != null
+                      ? '${selectedAddress['street']} ${selectedAddress['number']}, ${selectedAddress['postalCode']} ${selectedAddress['city']}'
+                      : '${addresses.first['street']} ${addresses.first['number']}, ${addresses.first['postalCode']} ${addresses.first['city']}',
+                  actionLabel: 'Alterar',
+                  onAction: () async {
+                    final result = await context.push('/profile/addresses');
+                    if (result == true) {
+                      ref.invalidate(addressesProviderCheckout);
+                    }
+                  },
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (_, __) => Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(OhMyFoodSpacing.md),
+                  child: Column(
+                    children: [
+                      Text('Erro ao carregar moradas', style: OhMyFoodTypography.body),
+                      const SizedBox(height: OhMyFoodSpacing.sm),
+                      ElevatedButton(
+                        onPressed: () => ref.invalidate(addressesProviderCheckout),
+                        child: const Text('Tentar novamente'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: OhMyFoodSpacing.lg),
             Text(
@@ -126,25 +193,79 @@ class CheckoutScreen extends HookConsumerWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  controller.clear();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Row(
-                        children: [
-                          Icon(Icons.check_circle, color: Colors.white),
-                          SizedBox(width: 12),
-                          Text('Pagamento confirmado! Pedido em preparação.'),
-                        ],
-                      ),
-                      backgroundColor: OhMyFoodColors.success,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  );
-                  context.go('/tracking/ord-preview');
+                onPressed: () async {
+                  // Validar morada selecionada
+                  if (selectedAddress == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Selecione uma morada de entrega')),
+                    );
+                    return;
+                  }
+
+                  // Obter userId do auth
+                  final authState = ref.read(authStateProvider);
+                  if (!authState.isAuthenticated || authState.userId == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Erro: usuário não autenticado')),
+                    );
+                    return;
+                  }
+
+                  try {
+                    final apiClient = ref.read(apiClientProvider);
+                    final restaurantId = cart.restaurantId;
+                    if (restaurantId == null) {
+                      throw Exception('Restaurante não selecionado');
+                    }
+
+                    // Criar pedido
+                    final orderData = {
+                      'restaurantId': restaurantId,
+                      'items': cart.items.map((cartItem) => {
+                        'menuItemId': cartItem.item.id,
+                        'name': cartItem.item.name,
+                        'quantity': cartItem.quantity,
+                        'unitPrice': cartItem.item.priceCents,
+                        'addons': [], // TODO: adicionar extras quando implementado
+                      }).toList(),
+                      'itemsTotalCents': cart.itemsTotalCents,
+                      'deliveryFeeCents': cart.deliveryFeeCents,
+                      'serviceFeeCents': cart.serviceFeeCents,
+                    };
+
+                    final order = await apiClient.createOrder(authState.userId!, orderData);
+                    
+                    controller.clear();
+                    
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Row(
+                            children: [
+                              Icon(Icons.check_circle, color: Colors.white),
+                              SizedBox(width: 12),
+                              Text('Pagamento confirmado! Pedido em preparação.'),
+                            ],
+                          ),
+                          backgroundColor: OhMyFoodColors.success,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      );
+                      context.go('/tracking/${order['id']}');
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Erro ao criar pedido: ${e.toString()}'),
+                          backgroundColor: OhMyFoodColors.error,
+                        ),
+                      );
+                    }
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 18),

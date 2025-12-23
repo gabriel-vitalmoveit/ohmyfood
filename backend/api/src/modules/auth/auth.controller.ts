@@ -1,8 +1,10 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { CurrentUser, CurrentUserPayload } from './decorators/current-user.decorator';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -21,8 +23,13 @@ export class AuthController {
 
   @Post('refresh')
   refresh(@Body('refreshToken') refreshToken: string) {
-    // Validar refresh token e retornar novos tokens
-    // Por enquanto, simplificado - em produção validar o token JWT
     return this.authService.refreshFromToken(refreshToken);
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async getMe(@CurrentUser() user: CurrentUserPayload) {
+    return this.authService.getMe(user.userId);
   }
 }

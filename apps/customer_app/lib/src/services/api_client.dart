@@ -243,5 +243,114 @@ class ApiClient {
       rethrow;
     }
   }
+
+  // Addresses
+  Future<List<Map<String, dynamic>>> getAddresses() async {
+    try {
+      final headers = await _getHeaders();
+      var response = await http.get(
+        Uri.parse('$_baseUrl/users/me/addresses'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 401) {
+        await _refreshTokenIfNeeded();
+        final newHeaders = await _getHeaders();
+        response = await http.get(
+          Uri.parse('$_baseUrl/users/me/addresses'),
+          headers: newHeaders,
+        ).timeout(const Duration(seconds: 10));
+      }
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((e) => e as Map<String, dynamic>).toList();
+      }
+      throw Exception('Failed to load addresses: ${response.statusCode}');
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> createAddress(Map<String, dynamic> addressData) async {
+    try {
+      final headers = await _getHeaders();
+      var response = await http.post(
+        Uri.parse('$_baseUrl/users/me/addresses'),
+        headers: headers,
+        body: json.encode(addressData),
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 401) {
+        await _refreshTokenIfNeeded();
+        final newHeaders = await _getHeaders();
+        response = await http.post(
+          Uri.parse('$_baseUrl/users/me/addresses'),
+          headers: newHeaders,
+          body: json.encode(addressData),
+        ).timeout(const Duration(seconds: 10));
+      }
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return json.decode(response.body);
+      }
+      throw Exception('Failed to create address: ${response.statusCode}');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> updateAddress(String addressId, Map<String, dynamic> addressData) async {
+    try {
+      final headers = await _getHeaders();
+      var response = await http.put(
+        Uri.parse('$_baseUrl/users/me/addresses/$addressId'),
+        headers: headers,
+        body: json.encode(addressData),
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 401) {
+        await _refreshTokenIfNeeded();
+        final newHeaders = await _getHeaders();
+        response = await http.put(
+          Uri.parse('$_baseUrl/users/me/addresses/$addressId'),
+          headers: newHeaders,
+          body: json.encode(addressData),
+        ).timeout(const Duration(seconds: 10));
+      }
+      
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      throw Exception('Failed to update address: ${response.statusCode}');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> deleteAddress(String addressId) async {
+    try {
+      final headers = await _getHeaders();
+      var response = await http.delete(
+        Uri.parse('$_baseUrl/users/me/addresses/$addressId'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 401) {
+        await _refreshTokenIfNeeded();
+        final newHeaders = await _getHeaders();
+        response = await http.delete(
+          Uri.parse('$_baseUrl/users/me/addresses/$addressId'),
+          headers: newHeaders,
+        ).timeout(const Duration(seconds: 10));
+      }
+      
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw Exception('Failed to delete address: ${response.statusCode}');
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
 }
 

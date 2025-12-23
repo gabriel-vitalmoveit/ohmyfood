@@ -130,6 +130,33 @@ export class AuthService {
     }
   }
 
+  async getMe(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        restaurant: {
+          select: { id: true },
+        },
+        courier: {
+          select: { id: true },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Usuário não encontrado');
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      displayName: user.displayName,
+      restaurantId: user.restaurant?.id ?? null,
+      courierId: user.courier?.id ?? null,
+    };
+  }
+
   private async issueTokens(userId: string, role: Role): Promise<AuthTokens> {
     const accessToken = await this.jwtService.signAsync(
       { sub: userId, role },

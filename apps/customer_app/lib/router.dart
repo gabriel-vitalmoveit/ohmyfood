@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
+import 'src/features/addresses/address_form_screen.dart';
+import 'src/features/addresses/addresses_screen.dart';
 import 'src/features/auth/login_screen.dart';
 import 'src/features/auth/register_screen.dart';
 import 'src/features/cart/cart_screen.dart';
@@ -94,6 +96,23 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: '/profile',
                 name: ProfileScreen.routeName,
                 builder: (context, state) => const ProfileScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'addresses',
+                    name: AddressesScreen.routeName,
+                    builder: (context, state) => const AddressesScreen(),
+                    routes: [
+                      GoRoute(
+                        path: 'new',
+                        builder: (context, state) => const AddressFormScreen(),
+                      ),
+                      GoRoute(
+                        path: ':id',
+                        builder: (context, state) => AddressFormScreen(addressId: state.pathParameters['id']!),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),

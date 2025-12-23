@@ -169,12 +169,40 @@ export class OrdersService {
   }
 
   async assignCourier(orderId: string, courierId: string) {
-    return this.prisma.order.update({
-      where: { id: orderId },
-      data: {
-        courierId,
-        status: OrderStatus.PICKUP,
-      },
+    // Transação atômica para evitar dupla atribuição
+    // Apenas status PICKUP e courierId null podem ser atribuídos
+    return this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { id: orderId },
+      });
+
+      if (!order) {
+        throw new NotFoundException('Pedido não encontrado');
+      }
+
+      if (order.status !== OrderStatus.PICKUP) {
+        throw new BadRequestException(`Pedido deve estar em status PICKUP. Status atual: ${order.status}`);
+      }
+
+      if (order.courierId !== null) {
+        throw new BadRequestException('Pedido já foi atribuído a um estafeta');
+      }
+
+      // Atualizar com transição de estado válida
+      const statusHistory = (order.statusHistory as any[]) || [];
+      statusHistory.push({
+        status: OrderStatus.ON_THE_WAY,
+        timestamp: new Date().toISOString(),
+      });
+
+      return tx.order.update({
+        where: { id: orderId },
+        data: {
+          courierId,
+          status: OrderStatus.ON_THE_WAY,
+          statusHistory,
+        },
+      });
     });
   }
 

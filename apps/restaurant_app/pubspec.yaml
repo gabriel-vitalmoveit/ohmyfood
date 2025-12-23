@@ -14,6 +14,7 @@ dependencies:
   hooks_riverpod: ^2.5.1
   flutter_hooks: ^0.20.5
   http: ^1.2.0
+  shared_preferences: ^2.2.2
   design_system:
     path: ../../packages/design_system
   shared_models:
