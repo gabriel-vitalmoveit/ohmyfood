@@ -45,10 +45,15 @@ export class AuthService {
         if (error.code === 'P2002') {
           throw new UnauthorizedException('Este email já está registado');
         }
+        // Erro P2021 = Table does not exist (migrations não executadas)
+        if (error.code === 'P2021') {
+          this.logger.error('Tabela não existe! Migrations não foram executadas.', error.meta);
+          throw new InternalServerErrorException('Base de dados não configurada. Execute as migrations primeiro.');
+        }
         // Erro P2025 = Record not found (não deveria acontecer em create)
         // Outros erros do Prisma
         this.logger.error(`Prisma error code: ${error.code}`, error.meta);
-        throw new InternalServerErrorException('Erro ao criar conta. Verifique a conexão com a base de dados.');
+        throw new InternalServerErrorException(`Erro ao criar conta (${error.code}). Verifique a conexão com a base de dados.`);
       }
       
       throw error;
@@ -78,8 +83,13 @@ export class AuthService {
       
       // Verificar se é um erro do Prisma (tem código que começa com 'P')
       if (error?.code && typeof error.code === 'string' && error.code.startsWith('P')) {
+        // Erro P2021 = Table does not exist (migrations não executadas)
+        if (error.code === 'P2021') {
+          this.logger.error('Tabela não existe! Migrations não foram executadas.', error.meta);
+          throw new InternalServerErrorException('Base de dados não configurada. Execute as migrations primeiro.');
+        }
         this.logger.error(`Prisma error code: ${error.code}`, error.meta);
-        throw new InternalServerErrorException('Erro ao fazer login. Verifique a conexão com a base de dados.');
+        throw new InternalServerErrorException(`Erro ao fazer login (${error.code}). Verifique a conexão com a base de dados.`);
       }
       
       throw new InternalServerErrorException('Erro ao fazer login');
