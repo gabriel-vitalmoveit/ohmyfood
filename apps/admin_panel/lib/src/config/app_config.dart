@@ -22,7 +22,8 @@ class AppConfig {
     
     const String env = String.fromEnvironment('ENV', defaultValue: 'dev');
     if (env == 'prod' || env == 'production') {
-      return 'https://api.ohmyfood.eu/api';
+      // URL do Railway em produção
+      return 'https://ohmyfood-production-800c.up.railway.app/api';
     }
     
     return 'http://localhost:3000/api';
