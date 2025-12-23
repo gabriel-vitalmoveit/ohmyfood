@@ -28,7 +28,7 @@ class HereMapsService {
         'origin=$startLat,$startLng&'
         'destination=$endLat,$endLng&'
         'transportMode=$transportMode&'
-        'return=summary,polyline&'
+        'return=summary&'
         'apikey=$_apiKey',
       );
 
@@ -45,10 +45,34 @@ class HereMapsService {
             final section = sections[0];
             final summary = section['summary'] ?? {};
             
+            // Extrair polyline básico (start e end points)
+            final polyline = <Map<String, double>>[];
+            final start = route['sections']?[0]?['departure'] as Map?;
+            final end = route['sections']?[sections.length - 1]?['arrival'] as Map?;
+            
+            if (start != null) {
+              final lat = (start['place']?['location']?['lat'] as num?)?.toDouble();
+              final lng = (start['place']?['location']?['lng'] as num?)?.toDouble();
+              if (lat != null && lng != null) {
+                polyline.add({'lat': lat, 'lng': lng});
+              }
+            }
+            
+            if (end != null) {
+              final lat = (end['place']?['location']?['lat'] as num?)?.toDouble();
+              final lng = (end['place']?['location']?['lng'] as num?)?.toDouble();
+              if (lat != null && lng != null) {
+                polyline.add({'lat': lat, 'lng': lng});
+              }
+            }
+            
             return {
               'distance': (summary['length'] ?? 0) / 1000.0, // converter para km
               'duration': Duration(seconds: summary['duration'] ?? 0),
-              'polyline': _extractPolyline(section),
+              'polyline': polyline.isNotEmpty ? polyline : [
+                {'lat': startLat, 'lng': startLng},
+                {'lat': endLat, 'lng': endLng},
+              ],
             };
           }
         }
