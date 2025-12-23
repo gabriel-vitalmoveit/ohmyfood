@@ -97,14 +97,14 @@ railway run npm run db:seed
 
 ### 7. Atualizar Frontend
 
-Use a URL do Railway no build do frontend (sem `/api` no final, o backend adiciona automaticamente):
+Use a URL do Railway no build do frontend **com** `/api` no final (o NestJS usa prefixo global `/api`):
 
 ```bash
 # Windows PowerShell
-.\scripts\build-for-cpanel.ps1 https://backend-production-xxxx.up.railway.app
+.\scripts\build-for-cpanel.ps1 https://backend-production-xxxx.up.railway.app/api
 
 # Linux/Mac
-./scripts/build-for-cpanel.sh https://backend-production-xxxx.up.railway.app
+./scripts/build-for-cpanel.sh https://backend-production-xxxx.up.railway.app/api
 ```
 
 **Nota:** O backend tem prefixo global `/api`, então os endpoints serão:

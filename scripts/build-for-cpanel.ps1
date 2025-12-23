@@ -18,11 +18,10 @@ Set-Location apps/customer_app
 flutter clean
 flutter pub get
 if (-not [string]::IsNullOrEmpty($RailwayApiUrl)) {
-    # URL da API (Railway já tem /api como prefixo global)
-    $apiUrl = $RailwayApiUrl
-    if (-not [string]::IsNullOrEmpty($RailwayApiUrl)) {
-        # Remove /api se já existir, pois será adicionado pelo backend
-        $apiUrl = $RailwayApiUrl.TrimEnd('/').Replace('/api', '')
+    # URL da API (NestJS usa prefixo global /api, então o client deve apontar para .../api)
+    $apiUrl = $RailwayApiUrl.TrimEnd('/')
+    if (-not $apiUrl.EndsWith('/api')) {
+        $apiUrl = "$apiUrl/api"
     }
     flutter build web --release --dart-define=ENV=prod --dart-define=API_BASE_URL=$apiUrl
 } else {
@@ -37,11 +36,10 @@ Set-Location apps/restaurant_app
 flutter clean
 flutter pub get
 if (-not [string]::IsNullOrEmpty($RailwayApiUrl)) {
-    # URL da API (Railway já tem /api como prefixo global)
-    $apiUrl = $RailwayApiUrl
-    if (-not [string]::IsNullOrEmpty($RailwayApiUrl)) {
-        # Remove /api se já existir, pois será adicionado pelo backend
-        $apiUrl = $RailwayApiUrl.TrimEnd('/').Replace('/api', '')
+    # URL da API (NestJS usa prefixo global /api, então o client deve apontar para .../api)
+    $apiUrl = $RailwayApiUrl.TrimEnd('/')
+    if (-not $apiUrl.EndsWith('/api')) {
+        $apiUrl = "$apiUrl/api"
     }
     flutter build web --release --dart-define=ENV=prod --dart-define=API_BASE_URL=$apiUrl
 } else {
@@ -56,11 +54,10 @@ Set-Location apps/admin_panel
 flutter clean
 flutter pub get
 if (-not [string]::IsNullOrEmpty($RailwayApiUrl)) {
-    # URL da API (Railway já tem /api como prefixo global)
-    $apiUrl = $RailwayApiUrl
-    if (-not [string]::IsNullOrEmpty($RailwayApiUrl)) {
-        # Remove /api se já existir, pois será adicionado pelo backend
-        $apiUrl = $RailwayApiUrl.TrimEnd('/').Replace('/api', '')
+    # URL da API (NestJS usa prefixo global /api, então o client deve apontar para .../api)
+    $apiUrl = $RailwayApiUrl.TrimEnd('/')
+    if (-not $apiUrl.EndsWith('/api')) {
+        $apiUrl = "$apiUrl/api"
     }
     flutter build web --release --dart-define=ENV=prod --dart-define=API_BASE_URL=$apiUrl
 } else {

@@ -1,4 +1,11 @@
 class AppConfig {
+  static String _normalizeApiUrl(String url) {
+    final trimmed = url.trim().replaceAll(RegExp(r'/*$'), '');
+    if (trimmed.isEmpty) return trimmed;
+    if (trimmed.endsWith('/api')) return trimmed;
+    return '$trimmed/api';
+  }
+
   // URL da API - Railway ou variável de ambiente
   static String get apiUrl {
     const String envApiUrl = String.fromEnvironment(
@@ -7,7 +14,7 @@ class AppConfig {
     );
     
     if (envApiUrl.isNotEmpty) {
-      return envApiUrl;
+      return _normalizeApiUrl(envApiUrl);
     }
     
     const String railwayUrl = String.fromEnvironment(
@@ -16,15 +23,15 @@ class AppConfig {
     );
     
     if (railwayUrl.isNotEmpty) {
-      return railwayUrl;
+      return _normalizeApiUrl(railwayUrl);
     }
     
     const String env = String.fromEnvironment('ENV', defaultValue: 'dev');
     if (env == 'prod' || env == 'production') {
-      return 'https://api.ohmyfood.eu/api';
+      return _normalizeApiUrl('https://api.ohmyfood.eu/api');
     }
     
-    return 'http://localhost:3000/api';
+    return _normalizeApiUrl('http://localhost:3000/api');
   }
   
   static const String productionWebUrl = 'https://restaurante.ohmyfood.eu';

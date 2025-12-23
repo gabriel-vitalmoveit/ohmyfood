@@ -20,11 +20,10 @@ cd apps/customer_app
 flutter clean
 flutter pub get
 if [ -n "$RAILWAY_API_URL" ]; then
-  # URL da API (Railway - backend já tem /api como prefixo global)
-  API_URL=$RAILWAY_API_URL
-  if [ -n "$RAILWAY_API_URL" ]; then
-    # Remove /api se já existir, pois será adicionado pelo backend
-    API_URL=$(echo "$RAILWAY_API_URL" | sed 's|/api$||' | sed 's|/$||')
+  # URL da API (NestJS usa prefixo global /api, então o client deve apontar para .../api)
+  API_URL=$(echo "$RAILWAY_API_URL" | sed 's|/$||')
+  if [[ ! "$API_URL" == */api ]]; then
+    API_URL="$API_URL/api"
   fi
   flutter build web --release --dart-define=ENV=prod --dart-define=API_BASE_URL=$API_URL
 else
@@ -39,11 +38,10 @@ cd apps/restaurant_app
 flutter clean
 flutter pub get
 if [ -n "$RAILWAY_API_URL" ]; then
-  # URL da API (Railway - backend já tem /api como prefixo global)
-  API_URL=$RAILWAY_API_URL
-  if [ -n "$RAILWAY_API_URL" ]; then
-    # Remove /api se já existir, pois será adicionado pelo backend
-    API_URL=$(echo "$RAILWAY_API_URL" | sed 's|/api$||' | sed 's|/$||')
+  # URL da API (NestJS usa prefixo global /api, então o client deve apontar para .../api)
+  API_URL=$(echo "$RAILWAY_API_URL" | sed 's|/$||')
+  if [[ ! "$API_URL" == */api ]]; then
+    API_URL="$API_URL/api"
   fi
   flutter build web --release --dart-define=ENV=prod --dart-define=API_BASE_URL=$API_URL
 else
@@ -58,11 +56,10 @@ cd apps/admin_panel
 flutter clean
 flutter pub get
 if [ -n "$RAILWAY_API_URL" ]; then
-  # URL da API (Railway - backend já tem /api como prefixo global)
-  API_URL=$RAILWAY_API_URL
-  if [ -n "$RAILWAY_API_URL" ]; then
-    # Remove /api se já existir, pois será adicionado pelo backend
-    API_URL=$(echo "$RAILWAY_API_URL" | sed 's|/api$||' | sed 's|/$||')
+  # URL da API (NestJS usa prefixo global /api, então o client deve apontar para .../api)
+  API_URL=$(echo "$RAILWAY_API_URL" | sed 's|/$||')
+  if [[ ! "$API_URL" == */api ]]; then
+    API_URL="$API_URL/api"
   fi
   flutter build web --release --dart-define=ENV=prod --dart-define=API_BASE_URL=$API_URL
 else

@@ -18,7 +18,7 @@ Este documento descreve todas as URLs do projeto OhMyFood e como configurá-las.
 | Serviço | URL Produção | Descrição |
 |---------|--------------|-----------|
 | **API REST** | `https://api.ohmyfood.eu` | API principal NestJS |
-| **Swagger Docs** | `https://api.ohmyfood.eu/docs` | Documentação da API |
+| **Swagger Docs** | `https://api.ohmyfood.eu/api/docs` | Documentação da API |
 | **WebSocket** | `wss://api.ohmyfood.eu/chat` | WebSocket para chat/tracking |
 
 ---
