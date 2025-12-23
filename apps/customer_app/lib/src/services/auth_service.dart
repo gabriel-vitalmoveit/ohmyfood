@@ -16,7 +16,7 @@ class AuthService {
           'email': email,
           'password': password,
         }),
-      );
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
@@ -24,10 +24,26 @@ class AuthService {
       } else if (response.statusCode == 401) {
         throw AuthException('Credenciais inválidas');
       } else {
-        throw AuthException('Erro ao fazer login: ${response.statusCode}');
+        final errorBody = response.body;
+        try {
+          final error = json.decode(errorBody);
+          throw AuthException(error['message'] ?? 'Erro ao fazer login: ${response.statusCode}');
+        } catch (_) {
+          throw AuthException('Erro ao fazer login: ${response.statusCode}');
+        }
       }
     } catch (e) {
       if (e is AuthException) rethrow;
+      
+      // Melhorar mensagens de erro de conexão
+      final errorMsg = e.toString().toLowerCase();
+      if (errorMsg.contains('failed host lookup') || 
+          errorMsg.contains('connection refused') ||
+          errorMsg.contains('network is unreachable') ||
+          errorMsg.contains('timeout')) {
+        throw AuthException('Backend não está disponível. Verifique se está rodando em $_baseUrl');
+      }
+      
       throw AuthException('Erro de conexão: ${e.toString()}');
     }
   }
@@ -47,17 +63,32 @@ class AuthService {
           'displayName': displayName,
           'role': 'CUSTOMER',
         }),
-      );
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
         return AuthResponse.fromJson(data);
       } else {
-        final error = json.decode(response.body);
-        throw AuthException(error['message'] ?? 'Erro ao criar conta');
+        final errorBody = response.body;
+        try {
+          final error = json.decode(errorBody);
+          throw AuthException(error['message'] ?? 'Erro ao criar conta: ${response.statusCode}');
+        } catch (_) {
+          throw AuthException('Erro ao criar conta: ${response.statusCode}');
+        }
       }
     } catch (e) {
       if (e is AuthException) rethrow;
+      
+      // Melhorar mensagens de erro de conexão
+      final errorMsg = e.toString().toLowerCase();
+      if (errorMsg.contains('failed host lookup') || 
+          errorMsg.contains('connection refused') ||
+          errorMsg.contains('network is unreachable') ||
+          errorMsg.contains('timeout')) {
+        throw AuthException('Backend não está disponível. Verifique se está rodando em $_baseUrl');
+      }
+      
       throw AuthException('Erro de conexão: ${e.toString()}');
     }
   }
