@@ -20,6 +20,28 @@ export class MenuService {
         ...data,
         restaurant: { connect: { id: restaurantId } },
       },
+      include: { optionGroups: { include: { options: true } } },
+    });
+  }
+
+  update(id: string, data: Prisma.MenuItemUpdateInput) {
+    return this.prisma.menuItem.update({
+      where: { id },
+      data,
+      include: { optionGroups: { include: { options: true } } },
+    });
+  }
+
+  delete(id: string) {
+    return this.prisma.menuItem.delete({
+      where: { id },
+    });
+  }
+
+  getById(id: string) {
+    return this.prisma.menuItem.findUnique({
+      where: { id },
+      include: { optionGroups: { include: { options: true } } },
     });
   }
 }

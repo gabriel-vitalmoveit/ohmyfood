@@ -89,5 +89,75 @@ class RestaurantApiClient {
       rethrow;
     }
   }
+
+  // Menu management
+  Future<List<dynamic>> getMenuItems(String restaurantId, {String? token}) async {
+    try {
+      final headers = await _getHeaders(token: token);
+      final response = await http.get(
+        Uri.parse('$_baseUrl/restaurants/$restaurantId/menu'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      throw Exception('Failed to load menu: ${response.statusCode}');
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> createMenuItem(String restaurantId, Map<String, dynamic> data, {String? token}) async {
+    try {
+      final headers = await _getHeaders(token: token);
+      final response = await http.post(
+        Uri.parse('$_baseUrl/restaurants/$restaurantId/menu'),
+        headers: headers,
+        body: json.encode(data),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return json.decode(response.body);
+      }
+      throw Exception('Failed to create menu item: ${response.statusCode}');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> updateMenuItem(String restaurantId, String itemId, Map<String, dynamic> data, {String? token}) async {
+    try {
+      final headers = await _getHeaders(token: token);
+      final response = await http.put(
+        Uri.parse('$_baseUrl/restaurants/$restaurantId/menu/$itemId'),
+        headers: headers,
+        body: json.encode(data),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      throw Exception('Failed to update menu item: ${response.statusCode}');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> deleteMenuItem(String restaurantId, String itemId, {String? token}) async {
+    try {
+      final headers = await _getHeaders(token: token);
+      final response = await http.delete(
+        Uri.parse('$_baseUrl/restaurants/$restaurantId/menu/$itemId'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw Exception('Failed to delete menu item: ${response.statusCode}');
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
 }
 
