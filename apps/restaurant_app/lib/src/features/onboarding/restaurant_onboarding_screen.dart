@@ -141,7 +141,7 @@ class _Step1RestaurantData extends HookConsumerWidget {
           const SizedBox(height: OhMyFoodSpacing.lg),
           Text(
             'Dados do restaurante',
-            style: OhMyFoodTypography.displayMd,
+            style: OhMyFoodTypography.displayLg,
           ),
           const SizedBox(height: OhMyFoodSpacing.sm),
           Text(
@@ -215,7 +215,7 @@ class _Step2Menu extends HookConsumerWidget {
           const SizedBox(height: OhMyFoodSpacing.lg),
           Text(
             'Menu e disponibilidade',
-            style: OhMyFoodTypography.displayMd,
+            style: OhMyFoodTypography.displayLg,
           ),
           const SizedBox(height: OhMyFoodSpacing.sm),
           Text(
@@ -296,7 +296,7 @@ class _Step3Payment extends HookConsumerWidget {
           const SizedBox(height: OhMyFoodSpacing.lg),
           Text(
             'Pagamentos & faturação',
-            style: OhMyFoodTypography.displayMd,
+            style: OhMyFoodTypography.displayLg,
           ),
           const SizedBox(height: OhMyFoodSpacing.sm),
           Text(

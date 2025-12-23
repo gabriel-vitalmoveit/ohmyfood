@@ -196,10 +196,49 @@ class ApiClient {
         body: json.encode(orderData),
       );
       
+      if (response.statusCode == 401) {
+        await _refreshTokenIfNeeded();
+        final newHeaders = await _getHeaders();
+        final retryResponse = await http.post(
+          Uri.parse('$_baseUrl/orders/user/$userId'),
+          headers: newHeaders,
+          body: json.encode(orderData),
+        );
+        if (retryResponse.statusCode == 201 || retryResponse.statusCode == 200) {
+          return json.decode(retryResponse.body);
+        }
+      }
+      
       if (response.statusCode == 201 || response.statusCode == 200) {
         return json.decode(response.body);
       }
       throw Exception('Failed to create order: ${response.statusCode}');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> getOrderById(String orderId) async {
+    try {
+      final headers = await _getHeaders();
+      var response = await http.get(
+        Uri.parse('$_baseUrl/orders/$orderId'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 401) {
+        await _refreshTokenIfNeeded();
+        final newHeaders = await _getHeaders();
+        response = await http.get(
+          Uri.parse('$_baseUrl/orders/$orderId'),
+          headers: newHeaders,
+        ).timeout(const Duration(seconds: 10));
+      }
+      
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      throw Exception('Failed to load order: ${response.statusCode}');
     } catch (e) {
       rethrow;
     }

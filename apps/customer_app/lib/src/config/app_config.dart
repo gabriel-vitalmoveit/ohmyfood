@@ -58,5 +58,20 @@ class AppConfig {
   static String get webUrl {
     return isProduction ? productionWebUrl : developmentWebUrl;
   }
+
+  // HERE Maps API Key
+  static String get hereMapsApiKey {
+    const String envKey = String.fromEnvironment(
+      'HERE_MAPS_API_KEY',
+      defaultValue: '',
+    );
+    
+    if (envKey.isNotEmpty) {
+      return envKey;
+    }
+    
+    // API Key de produção
+    return 't8Ikr294r1USEjAoZGOnv1ZTb2y96ILFIO4td5aCKaU';
+  }
 }
 

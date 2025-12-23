@@ -64,8 +64,8 @@ class AppConfig {
       return envKey;
     }
     
-    // Fallback - deve ser configurado via variável de ambiente
-    return '';
+    // API Key de produção
+    return 't8Ikr294r1USEjAoZGOnv1ZTb2y96ILFIO4td5aCKaU';
   }
 }
 
