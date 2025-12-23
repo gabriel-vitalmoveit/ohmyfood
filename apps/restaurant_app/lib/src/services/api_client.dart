@@ -72,7 +72,7 @@ class RestaurantApiClient {
     }
   }
 
-  Future<Map<String, dynamic>> updateOrderStatus(String orderId, String status, {String? token}) async {
+  Future<void> updateOrderStatus(String orderId, String status, {String? token}) async {
     try {
       final headers = await _getHeaders(token: token);
       final response = await http.put(
@@ -81,10 +81,9 @@ class RestaurantApiClient {
         body: json.encode({'status': status}),
       ).timeout(const Duration(seconds: 10));
 
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw Exception('Failed to update order: ${response.statusCode}');
       }
-      throw Exception('Failed to update order: ${response.statusCode}');
     } catch (e) {
       rethrow;
     }
