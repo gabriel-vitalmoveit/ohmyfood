@@ -32,6 +32,20 @@ async function seed() {
     },
   });
 
+  // Criar usuário cliente de teste
+  const customerPassword = await argon2.hash('customer123');
+  const customer = await prisma.user.upsert({
+    where: { email: 'cliente@ohmyfood.pt' },
+    update: {},
+    create: {
+      email: 'cliente@ohmyfood.pt',
+      passwordHash: customerPassword,
+      role: Role.CUSTOMER,
+      displayName: 'Cliente Teste',
+    },
+  });
+
+  // Restaurante 1: Tasca do Bairro
   await prisma.restaurant.upsert({
     where: { id: 'demo-restaurant' },
     update: {},
@@ -44,7 +58,7 @@ async function seed() {
       lat: 38.7223,
       lng: -9.1393,
       active: true,
-      categories: ['restaurantes', 'portugues'],
+      categories: ['restaurantes', 'portugues', 'Tradicional'],
       averagePrepMin: 18,
       menuItems: {
         create: [
@@ -70,6 +84,11 @@ async function seed() {
             },
           },
           {
+            name: 'Bacalhau à Brás',
+            description: 'Receita tradicional com batata palha estaladiça.',
+            priceCents: 890,
+          },
+          {
             name: 'Pastel de Nata',
             description: 'Doce tradicional com massa folhada crocante.',
             priceCents: 180,
@@ -79,8 +98,71 @@ async function seed() {
     },
   });
 
+  // Restaurante 2: Mercado Fresco
+  await prisma.restaurant.upsert({
+    where: { id: 'mercado-fresco' },
+    update: {},
+    create: {
+      id: 'mercado-fresco',
+      name: 'Mercado Fresco',
+      description: 'Produtos frescos e biológicos entregues em casa.',
+      lat: 38.7139,
+      lng: -9.1366,
+      active: true,
+      categories: ['Mercearia', 'Bio'],
+      averagePrepMin: 10,
+      menuItems: {
+        create: [
+          {
+            name: 'Cabaz Bio Lisboa',
+            description: 'Frutas e legumes locais para a semana.',
+            priceCents: 1590,
+          },
+          {
+            name: 'Granola Artesanal',
+            description: 'Granola com frutos secos e mel.',
+            priceCents: 690,
+          },
+        ],
+      },
+    },
+  });
+
+  // Restaurante 3: Farmácia Lisboa 24h
+  await prisma.restaurant.upsert({
+    where: { id: 'farmacia-lisboa' },
+    update: {},
+    create: {
+      id: 'farmacia-lisboa',
+      name: 'Farmácia Lisboa 24h',
+      description: 'Medicamentos e produtos de saúde 24/7.',
+      lat: 38.7091,
+      lng: -9.1333,
+      active: true,
+      categories: ['Farmácia', 'Saúde'],
+      averagePrepMin: 8,
+      menuItems: {
+        create: [
+          {
+            name: 'Kit Constipação',
+            description: 'Analgesia, vitamina C e spray nasal.',
+            priceCents: 1490,
+          },
+          {
+            name: 'Pack Testes Antigénio',
+            description: '5 testes rápidos aprovados pela DGS.',
+            priceCents: 990,
+          },
+        ],
+      },
+    },
+  });
+
   console.info('✅ Seeding concluído.');
-  console.info(`Admin login: ${admin.email} / admin123`);
+  console.info(`\n📧 Credenciais de teste:`);
+  console.info(`Admin: ${admin.email} / admin123`);
+  console.info(`Restaurante: restaurante@ohmyfood.pt / restaurant123`);
+  console.info(`Cliente: cliente@ohmyfood.pt / customer123`);
 }
 
 seed()
