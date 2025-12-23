@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { OrderStatus } from '@prisma/client';
 import { PrismaService } from '../common';
 import { PaymentsService } from '../payments/payments.service';
@@ -76,7 +76,27 @@ export class OrdersService {
     });
   }
 
-  async listForRestaurant(restaurantId: string, status?: OrderStatus) {
+  async validateRestaurantOwnership(restaurantId: string, userId: string): Promise<void> {
+    const restaurant = await this.prisma.restaurant.findUnique({
+      where: { id: restaurantId },
+      select: { userId: true },
+    });
+
+    if (!restaurant) {
+      throw new NotFoundException('Restaurante não encontrado');
+    }
+
+    if (restaurant.userId !== userId) {
+      throw new ForbiddenException('Acesso negado: este restaurante não pertence ao utilizador autenticado');
+    }
+  }
+
+  async listForRestaurant(restaurantId: string, status?: OrderStatus, userId?: string) {
+    // Validar ownership se userId fornecido
+    if (userId) {
+      await this.validateRestaurantOwnership(restaurantId, userId);
+    }
+
     const where: any = { restaurantId };
     if (status) {
       where.status = status;

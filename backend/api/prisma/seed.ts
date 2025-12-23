@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { PrismaClient, Role } from '@prisma/client';
+import { PrismaClient, Role, OrderStatus } from '@prisma/client';
 import * as argon2 from 'argon2';
 
 const prisma = new PrismaClient();
@@ -54,11 +54,11 @@ async function seed() {
   });
 
   // ============================================
-  // RESTAURANTE 1: Tasca do Bairro
+  // RESTAURANTE 1: Tasca do Bairro (ligado ao restaurantUser)
   // ============================================
   await prisma.restaurant.upsert({
     where: { id: 'demo-restaurant' },
-    update: { active: true },
+    update: { active: true, userId: restaurantUser.id },
     create: {
       id: 'demo-restaurant',
       userId: restaurantUser.id,
@@ -496,13 +496,143 @@ async function seed() {
     },
   });
 
+  // ============================================
+  // COURIER USER + ENTITY
+  // ============================================
+  const courierPassword = await argon2.hash('courier123');
+  const courierUser = await prisma.user.upsert({
+    where: { email: 'courier@ohmyfood.pt' },
+    update: {},
+    create: {
+      email: 'courier@ohmyfood.pt',
+      passwordHash: courierPassword,
+      role: Role.COURIER,
+      displayName: 'Estafeta Teste',
+    },
+  });
+
+  await prisma.courier.upsert({
+    where: { userId: courierUser.id },
+    update: { isVerified: true, online: true },
+    create: {
+      userId: courierUser.id,
+      isVerified: true,
+      online: true,
+      location: {
+        create: {
+          lat: LISBON_CENTER.lat,
+          lng: LISBON_CENTER.lng,
+        },
+      },
+    },
+  });
+
+  // ============================================
+  // ADDRESS PARA CUSTOMER
+  // ============================================
+  await prisma.address.upsert({
+    where: { id: 'customer-address-1' },
+    update: {},
+    create: {
+      id: 'customer-address-1',
+      userId: customer.id,
+      label: 'Casa',
+      street: 'Rua da Alameda',
+      number: '123',
+      complement: '2º Esquerdo',
+      postalCode: '1000-001',
+      city: 'Lisboa',
+      country: 'Portugal',
+      lat: LISBON_CENTER.lat,
+      lng: LISBON_CENTER.lng,
+      isDefault: true,
+      instructions: 'Tocar à campainha do 2º esquerdo',
+    },
+  });
+
+  // ============================================
+  // ORDERS DE TESTE
+  // ============================================
+  // Buscar menu items do demo-restaurant
+  const menuItems = await prisma.menuItem.findMany({
+    where: { restaurantId: 'demo-restaurant' },
+    take: 3,
+  });
+
+  if (menuItems.length >= 2) {
+    // Order A: Novo (para aceitar no restaurant)
+    await prisma.order.create({
+      data: {
+        userId: customer.id,
+        restaurantId: 'demo-restaurant',
+        status: OrderStatus.AWAITING_ACCEPTANCE,
+        itemsTotal: 2850, // 3 itens
+        deliveryFee: 200,
+        serviceFee: 150,
+        total: 3200,
+        items: {
+          create: [
+            {
+              menuItemId: menuItems[0].id,
+              name: menuItems[0].name,
+              quantity: 2,
+              unitPrice: menuItems[0].priceCents,
+            },
+            {
+              menuItemId: menuItems[1].id,
+              name: menuItems[1].name,
+              quantity: 1,
+              unitPrice: menuItems[1].priceCents,
+            },
+          ],
+        },
+        statusHistory: [
+          { status: OrderStatus.DRAFT, timestamp: new Date().toISOString() },
+          { status: OrderStatus.AWAITING_ACCEPTANCE, timestamp: new Date().toISOString() },
+        ],
+      },
+    });
+
+    // Order B: Em estado intermediário (PREPARING)
+    await prisma.order.create({
+      data: {
+        userId: customer.id,
+        restaurantId: 'demo-restaurant',
+        status: OrderStatus.PREPARING,
+        itemsTotal: menuItems[2]?.priceCents || 1050,
+        deliveryFee: 200,
+        serviceFee: 100,
+        total: (menuItems[2]?.priceCents || 1050) + 200 + 100,
+        items: {
+          create: [
+            {
+              menuItemId: menuItems[2]?.id || menuItems[0].id,
+              name: menuItems[2]?.name || menuItems[0].name,
+              quantity: 1,
+              unitPrice: menuItems[2]?.priceCents || 1050,
+            },
+          ],
+        },
+        statusHistory: [
+          { status: OrderStatus.DRAFT, timestamp: new Date(Date.now() - 3600000).toISOString() },
+          { status: OrderStatus.AWAITING_ACCEPTANCE, timestamp: new Date(Date.now() - 3000000).toISOString() },
+          { status: OrderStatus.PREPARING, timestamp: new Date(Date.now() - 1800000).toISOString() },
+        ],
+      },
+    });
+  }
+
   console.info('✅ Seeding concluído.');
   console.info(`\n📧 Credenciais de teste:`);
   console.info(`Admin: ${admin.email} / admin123`);
   console.info(`Restaurante: restaurante@ohmyfood.pt / restaurant123`);
   console.info(`Cliente: cliente@ohmyfood.pt / customer123`);
+  console.info(`Estafeta: courier@ohmyfood.pt / courier123`);
   console.info(`\n🍽️  Restaurantes criados: 5`);
   console.info(`📦 Itens de menu criados: ~50`);
+  console.info(`🚴 Estafeta criado: 1`);
+  console.info(`📍 Moradas criadas: 1`);
+  console.info(`📋 Pedidos criados: 2`);
 }
 
 seed()

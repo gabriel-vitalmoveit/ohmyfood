@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { Prisma, Restaurant } from '@prisma/client';
 import { PrismaService } from '../common';
 
@@ -42,11 +42,35 @@ export class RestaurantsService {
     });
   }
 
-  create(data: Prisma.RestaurantCreateInput): Promise<Restaurant> {
+  async create(data: Prisma.RestaurantCreateInput, userId?: string): Promise<Restaurant> {
+    // Se userId fornecido, garantir que restaurant.userId seja preenchido
+    if (userId) {
+      data.user = { connect: { id: userId } };
+    }
     return this.prisma.restaurant.create({ data });
   }
 
-  async getStats(restaurantId: string) {
+  async validateRestaurantOwnership(restaurantId: string, userId: string): Promise<void> {
+    const restaurant = await this.prisma.restaurant.findUnique({
+      where: { id: restaurantId },
+      select: { userId: true },
+    });
+
+    if (!restaurant) {
+      throw new ForbiddenException('Restaurante não encontrado');
+    }
+
+    if (restaurant.userId !== userId) {
+      throw new ForbiddenException('Acesso negado: este restaurante não pertence ao utilizador autenticado');
+    }
+  }
+
+  async getStats(restaurantId: string, userId?: string) {
+    // Se userId fornecido, validar ownership
+    if (userId) {
+      await this.validateRestaurantOwnership(restaurantId, userId);
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -132,7 +156,12 @@ export class RestaurantsService {
     };
   }
 
-  async getOrders(restaurantId: string, status?: string) {
+  async getOrders(restaurantId: string, status?: string, userId?: string) {
+    // Se userId fornecido, validar ownership
+    if (userId) {
+      await this.validateRestaurantOwnership(restaurantId, userId);
+    }
+
     const where: Prisma.OrderWhereInput = {
       restaurantId,
       ...(status ? { status: status as any } : {}),

@@ -3,6 +3,7 @@ import { ApiQuery, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { OrderStatus, Role } from '@prisma/client';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrdersService } from './orders.service';
+import { AuthService } from '../auth/auth.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -13,7 +14,10 @@ import { CurrentUser, CurrentUserPayload } from '../auth/decorators/current-user
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(
+    private readonly ordersService: OrdersService,
+    private readonly authService: AuthService,
+  ) {}
 
   @Get('user/:userId')
   @Roles(Role.CUSTOMER, Role.ADMIN)
@@ -26,6 +30,14 @@ export class OrdersController {
     return this.ordersService.listForUser(userId);
   }
 
+  @Get('me')
+  @Roles(Role.CUSTOMER, Role.ADMIN)
+  @UseGuards(RolesGuard)
+  listMyOrders(@CurrentUser() user: CurrentUserPayload) {
+    // Endpoint seguro usando /me
+    return this.ordersService.listForUser(user.userId);
+  }
+
   @Get('restaurant/:restaurantId')
   @Roles(Role.RESTAURANT, Role.ADMIN)
   @UseGuards(RolesGuard)
@@ -35,9 +47,23 @@ export class OrdersController {
     @Query('status') status?: string,
     @CurrentUser() user?: CurrentUserPayload,
   ) {
-    // Restaurant só pode ver seus próprios pedidos (exceto admin)
-    // TODO: Validar se user.restaurantId === restaurantId
-    return this.ordersService.listForRestaurant(restaurantId, status as OrderStatus);
+    // Admin pode ver qualquer restaurant, Restaurant só pode ver o seu
+    const userId = user?.role === Role.ADMIN ? undefined : user?.userId;
+    return this.ordersService.listForRestaurant(restaurantId, status as OrderStatus, userId);
+  }
+
+  @Get('restaurant/me')
+  @Roles(Role.RESTAURANT)
+  @UseGuards(RolesGuard)
+  @ApiQuery({ name: 'status', required: false })
+  async listMyRestaurantOrders(@Query('status') status?: string, @CurrentUser() user?: CurrentUserPayload) {
+    // Buscar restaurantId do user
+    const me = await this.authService.getMe(user!.userId);
+    if (!me.restaurantId) {
+      throw new ForbiddenException('Utilizador não tem restaurante associado');
+    }
+
+    return this.ordersService.listForRestaurant(me.restaurantId, status as OrderStatus, user!.userId);
   }
 
   @Get('available/courier')
@@ -72,6 +98,14 @@ export class OrdersController {
       throw new ForbiddenException('Acesso negado');
     }
     return this.ordersService.create(userId, dto);
+  }
+
+  @Post()
+  @Roles(Role.CUSTOMER, Role.ADMIN)
+  @UseGuards(RolesGuard)
+  createMyOrder(@Body() dto: CreateOrderDto, @CurrentUser() user: CurrentUserPayload) {
+    // Endpoint seguro usando /me (implícito)
+    return this.ordersService.create(user.userId, dto);
   }
 
   @Put(':id/status')

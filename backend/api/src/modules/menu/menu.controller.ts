@@ -5,6 +5,7 @@ import { MenuService } from './menu.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser, CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('menu')
 @Controller('restaurants/:restaurantId/menu')
@@ -30,24 +31,31 @@ export class MenuController {
   create(
     @Param('restaurantId') restaurantId: string,
     @Body() data: Prisma.MenuItemCreateWithoutRestaurantInput,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.menuService.create(restaurantId, data);
+    // Admin pode criar em qualquer restaurant, Restaurant só no seu
+    const userId = user.role === Role.ADMIN ? undefined : user.userId;
+    return this.menuService.create(restaurantId, data, userId);
   }
 
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.RESTAURANT, Role.ADMIN)
   @ApiBearerAuth()
-  update(@Param('id') id: string, @Body() data: Prisma.MenuItemUpdateInput) {
-    return this.menuService.update(id, data);
+  update(@Param('id') id: string, @Body() data: Prisma.MenuItemUpdateInput, @CurrentUser() user: CurrentUserPayload) {
+    // Admin pode editar qualquer item, Restaurant só os seus
+    const userId = user.role === Role.ADMIN ? undefined : user.userId;
+    return this.menuService.update(id, data, userId);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.RESTAURANT, Role.ADMIN)
   @ApiBearerAuth()
-  delete(@Param('id') id: string) {
-    return this.menuService.delete(id);
+  delete(@Param('id') id: string, @CurrentUser() user: CurrentUserPayload) {
+    // Admin pode deletar qualquer item, Restaurant só os seus
+    const userId = user.role === Role.ADMIN ? undefined : user.userId;
+    return this.menuService.delete(id, userId);
   }
 
   // OptionGroups
@@ -55,24 +63,27 @@ export class MenuController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.RESTAURANT, Role.ADMIN)
   @ApiBearerAuth()
-  createOptionGroup(@Param('menuItemId') menuItemId: string, @Body() data: any) {
-    return this.menuService.createOptionGroup(menuItemId, data);
+  createOptionGroup(@Param('menuItemId') menuItemId: string, @Body() data: any, @CurrentUser() user: CurrentUserPayload) {
+    const userId = user.role === Role.ADMIN ? undefined : user.userId;
+    return this.menuService.createOptionGroup(menuItemId, data, userId);
   }
 
   @Put('option-groups/:optionGroupId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.RESTAURANT, Role.ADMIN)
   @ApiBearerAuth()
-  updateOptionGroup(@Param('optionGroupId') optionGroupId: string, @Body() data: any) {
-    return this.menuService.updateOptionGroup(optionGroupId, data);
+  updateOptionGroup(@Param('optionGroupId') optionGroupId: string, @Body() data: any, @CurrentUser() user: CurrentUserPayload) {
+    const userId = user.role === Role.ADMIN ? undefined : user.userId;
+    return this.menuService.updateOptionGroup(optionGroupId, data, userId);
   }
 
   @Delete('option-groups/:optionGroupId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.RESTAURANT, Role.ADMIN)
   @ApiBearerAuth()
-  deleteOptionGroup(@Param('optionGroupId') optionGroupId: string) {
-    return this.menuService.deleteOptionGroup(optionGroupId);
+  deleteOptionGroup(@Param('optionGroupId') optionGroupId: string, @CurrentUser() user: CurrentUserPayload) {
+    const userId = user.role === Role.ADMIN ? undefined : user.userId;
+    return this.menuService.deleteOptionGroup(optionGroupId, userId);
   }
 
   // Options
@@ -80,23 +91,26 @@ export class MenuController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.RESTAURANT, Role.ADMIN)
   @ApiBearerAuth()
-  createOption(@Param('optionGroupId') optionGroupId: string, @Body() data: any) {
-    return this.menuService.createOption(optionGroupId, data);
+  createOption(@Param('optionGroupId') optionGroupId: string, @Body() data: any, @CurrentUser() user: CurrentUserPayload) {
+    const userId = user.role === Role.ADMIN ? undefined : user.userId;
+    return this.menuService.createOption(optionGroupId, data, userId);
   }
 
   @Put('options/:optionId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.RESTAURANT, Role.ADMIN)
   @ApiBearerAuth()
-  updateOption(@Param('optionId') optionId: string, @Body() data: any) {
-    return this.menuService.updateOption(optionId, data);
+  updateOption(@Param('optionId') optionId: string, @Body() data: any, @CurrentUser() user: CurrentUserPayload) {
+    const userId = user.role === Role.ADMIN ? undefined : user.userId;
+    return this.menuService.updateOption(optionId, data, userId);
   }
 
   @Delete('options/:optionId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.RESTAURANT, Role.ADMIN)
   @ApiBearerAuth()
-  deleteOption(@Param('optionId') optionId: string) {
-    return this.menuService.deleteOption(optionId);
+  deleteOption(@Param('optionId') optionId: string, @CurrentUser() user: CurrentUserPayload) {
+    const userId = user.role === Role.ADMIN ? undefined : user.userId;
+    return this.menuService.deleteOption(optionId, userId);
   }
 }
