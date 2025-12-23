@@ -9,3 +9,5 @@ dist
 **/android
 .env
 infra/data
+*.zip
+apps.zip

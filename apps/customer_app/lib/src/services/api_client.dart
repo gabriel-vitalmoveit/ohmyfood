@@ -14,7 +14,7 @@ class ApiClient {
   final String _baseUrl;
   final AuthRepository? _authRepository;
 
-  Future<Map<String, String>> _getHeaders() async {
+  Future<Map<String, String>> _getHeaders({bool retry = false}) async {
     final headers = <String, String>{
       'Content-Type': 'application/json',
     };
@@ -28,6 +28,25 @@ class ApiClient {
     }
 
     return headers;
+  }
+
+  Future<void> _refreshTokenIfNeeded() async {
+    if (_authRepository == null) return;
+    
+    try {
+      final refreshToken = await _authRepository!.getRefreshToken();
+      if (refreshToken == null || refreshToken.isEmpty) return;
+
+      // Importar AuthService dinamicamente para evitar dependência circular
+      final authService = AuthService();
+      final newTokens = await authService.refreshToken(refreshToken);
+      
+      // Salvar novos tokens
+      await _authRepository!.saveTokens(newTokens);
+    } catch (e) {
+      // Se refresh falhar, limpar autenticação
+      await _authRepository!.clearAuth();
+    }
   }
 
   Future<List<RestaurantModel>> getRestaurants({
@@ -53,7 +72,14 @@ class ApiClient {
 
       final uri = Uri.parse('$_baseUrl/restaurants').replace(queryParameters: queryParams.isEmpty ? null : queryParams);
       final headers = await _getHeaders();
-      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
+      var response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
+      
+      // Se receber 401, tentar refresh token e repetir
+      if (response.statusCode == 401) {
+        await _refreshTokenIfNeeded();
+        final newHeaders = await _getHeaders();
+        response = await http.get(uri, headers: newHeaders).timeout(const Duration(seconds: 10));
+      }
       
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);

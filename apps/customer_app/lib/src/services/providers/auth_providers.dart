@@ -84,6 +84,30 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final repository = ref.read(authRepositoryProvider);
     return await repository.getAccessToken();
   }
+
+  Future<void> refreshTokens() async {
+    try {
+      final repository = ref.read(authRepositoryProvider);
+      final refreshToken = await repository.getRefreshToken();
+      if (refreshToken == null || refreshToken.isEmpty) {
+        state = const AuthState.unauthenticated();
+        return;
+      }
+
+      final authService = ref.read(authServiceProvider);
+      final newTokens = await authService.refreshToken(refreshToken);
+      await repository.saveTokens(newTokens);
+      
+      // Manter estado autenticado
+      final email = await repository.getUserEmail();
+      if (email != null) {
+        state = AuthState.authenticated(email);
+      }
+    } catch (e) {
+      // Se refresh falhar, fazer logout
+      await logout();
+    }
+  }
 }
 
 sealed class AuthState {
