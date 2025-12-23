@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../services/providers/courier_providers.dart';
+import '../../features/auth/login_screen.dart';
 
 class AvailableOrdersScreen extends HookConsumerWidget {
   const AvailableOrdersScreen({super.key});
@@ -103,7 +104,60 @@ class AvailableOrdersScreen extends HookConsumerWidget {
                             const SizedBox(width: OhMyFoodSpacing.md),
                             Expanded(
                               child: ElevatedButton(
-                                onPressed: () => context.go('/orders/${order['id']}'),
+                                onPressed: () async {
+                                  try {
+                                    final apiClient = ref.read(courierApiClientProvider);
+                                    final authState = ref.read(authStateProvider);
+                                    final courierId = authState.courierId;
+                                    
+                                    if (courierId == null) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Erro: estafeta não encontrado'),
+                                          backgroundColor: OhMyFoodColors.error,
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    
+                                    // Atribuir pedido ao courier
+                                    await apiClient.assignOrder(order['id'], courierId);
+                                    
+                                    // Refresh lista
+                                    ref.invalidate(availableOrdersProvider);
+                                    
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Pedido aceite com sucesso!'),
+                                          backgroundColor: OhMyFoodColors.success,
+                                        ),
+                                      );
+                                      // Navegar para detalhe do pedido
+                                      context.go('/orders/${order['id']}');
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      String errorMsg = 'Erro ao aceitar pedido';
+                                      if (e.toString().contains('409') || e.toString().contains('já atribuído')) {
+                                        errorMsg = 'Este pedido já foi atribuído a outro estafeta';
+                                      } else if (e.toString().contains('403') || e.toString().contains('negado')) {
+                                        errorMsg = 'Acesso negado';
+                                      } else if (e.toString().contains('400') || e.toString().contains('indisponível')) {
+                                        errorMsg = 'Pedido indisponível';
+                                      }
+                                      
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(errorMsg),
+                                          backgroundColor: OhMyFoodColors.error,
+                                        ),
+                                      );
+                                      // Refresh lista mesmo em caso de erro
+                                      ref.invalidate(availableOrdersProvider);
+                                    }
+                                  }
+                                },
                                 child: const Text('Aceitar'),
                               ),
                             ),

@@ -242,7 +242,7 @@ class CheckoutScreen extends HookConsumerWidget {
                       'serviceFeeCents': cart.serviceFeeCents,
                     };
 
-                    final order = await apiClient.createOrder(userId, orderData);
+                    final order = await apiClient.createOrder(orderData);
                     
                     controller.clear();
                     

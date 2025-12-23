@@ -68,11 +68,10 @@ final currentUserIdProvider = FutureProvider<String?>((ref) async {
 // Provider para pedidos do usuário
 final userOrdersProvider = FutureProvider<List<OrderModel>>((ref) async {
   final apiClient = ref.watch(apiClientProvider);
-  final userIdAsync = ref.watch(currentUserIdProvider);
-  final userId = await userIdAsync.value;
-  if (userId == null) return [];
+  final authState = ref.watch(authStateProvider);
+  if (!authState.isAuthenticated) return [];
   try {
-    final orders = await apiClient.getUserOrders(userId);
+    final orders = await apiClient.getUserOrders();
     return orders;
   } catch (e) {
     return [];
@@ -106,7 +105,7 @@ class CreateOrderNotifier extends StateNotifier<AsyncValue<Map<String, dynamic>?
         throw Exception('Usuário não autenticado');
       }
       
-      final order = await apiClient.createOrder(userId, orderData);
+      final order = await apiClient.createOrder(orderData);
       state = AsyncValue.data(order);
       // Invalida a lista de pedidos após criar novo pedido
       ref.invalidate(userOrdersProvider);

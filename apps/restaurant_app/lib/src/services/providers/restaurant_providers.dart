@@ -1,21 +1,21 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../api_client.dart';
+import '../auth_repository.dart';
+
+final authRepositoryProvider = Provider<AuthRepository>((ref) => AuthRepository());
 
 final restaurantApiClientProvider = Provider<RestaurantApiClient>((ref) {
   return RestaurantApiClient();
 });
 
-// Restaurant ID - em produção viria do auth
-final restaurantIdProvider = StateProvider<String?>((ref) => 'demo-restaurant');
-
-// Stats provider
+// Stats provider - usa /me endpoint
 final restaurantStatsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final apiClient = ref.watch(restaurantApiClientProvider);
-  final restaurantId = ref.watch(restaurantIdProvider);
-  if (restaurantId == null) throw Exception('Restaurant ID not set');
+  final authRepository = ref.watch(authRepositoryProvider);
+  final token = await authRepository.getAccessToken();
   
   try {
-    return await apiClient.getStats(restaurantId);
+    return await apiClient.getStats(token: token);
   } catch (e) {
     // Retornar stats vazios em caso de erro
     return {
@@ -30,14 +30,14 @@ final restaurantStatsProvider = FutureProvider<Map<String, dynamic>>((ref) async
   }
 });
 
-// Orders provider
+// Orders provider - usa /me endpoint
 final restaurantOrdersProvider = FutureProvider.family<List<dynamic>, String?>((ref, status) async {
   final apiClient = ref.watch(restaurantApiClientProvider);
-  final restaurantId = ref.watch(restaurantIdProvider);
-  if (restaurantId == null) return [];
+  final authRepository = ref.watch(authRepositoryProvider);
+  final token = await authRepository.getAccessToken();
   
   try {
-    return await apiClient.getOrders(restaurantId, status: status);
+    return await apiClient.getOrders(status: status, token: token);
   } catch (e) {
     return [];
   }

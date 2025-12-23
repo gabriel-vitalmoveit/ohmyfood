@@ -17,13 +17,22 @@ class RestaurantApiClient {
     return headers;
   }
 
-  Future<Map<String, dynamic>> getStats(String restaurantId, {String? token}) async {
+  Future<Map<String, dynamic>> getStats({String? restaurantId, String? token}) async {
     try {
       final headers = await _getHeaders(token: token);
-      final response = await http.get(
-        Uri.parse('$_baseUrl/restaurants/$restaurantId/stats'),
+      // Tentar /me primeiro, fallback para endpoint antigo se 404
+      var response = await http.get(
+        Uri.parse('$_baseUrl/restaurants/me/stats'),
         headers: headers,
       ).timeout(const Duration(seconds: 10));
+      
+      // Se 404 e restaurantId fornecido, tentar endpoint antigo (compatibilidade)
+      if (response.statusCode == 404 && restaurantId != null) {
+        response = await http.get(
+          Uri.parse('$_baseUrl/restaurants/$restaurantId/stats'),
+          headers: headers,
+        ).timeout(const Duration(seconds: 10));
+      }
 
       if (response.statusCode == 200) {
         return json.decode(response.body);
@@ -34,17 +43,25 @@ class RestaurantApiClient {
     }
   }
 
-  Future<List<dynamic>> getOrders(String restaurantId, {String? status, String? token}) async {
+  Future<List<dynamic>> getOrders({String? restaurantId, String? status, String? token}) async {
     try {
       final queryParams = <String, String>{};
       if (status != null && status.isNotEmpty) {
         queryParams['status'] = status;
       }
 
-      final uri = Uri.parse('$_baseUrl/orders/restaurant/$restaurantId')
-          .replace(queryParameters: queryParams.isEmpty ? null : queryParams);
       final headers = await _getHeaders(token: token);
-      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
+      // Tentar /me primeiro, fallback para endpoint antigo se 404
+      var uri = Uri.parse('$_baseUrl/restaurants/me/orders')
+          .replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+      var response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
+      
+      // Se 404 e restaurantId fornecido, tentar endpoint antigo (compatibilidade)
+      if (response.statusCode == 404 && restaurantId != null) {
+        uri = Uri.parse('$_baseUrl/orders/restaurant/$restaurantId')
+            .replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+        response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
+      }
 
       if (response.statusCode == 200) {
         return json.decode(response.body);

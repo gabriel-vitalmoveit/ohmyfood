@@ -4,6 +4,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import 'src/features/analytics/analytics_screen.dart';
 import 'src/features/auth/login_screen.dart';
+import 'src/features/auth/access_denied_screen.dart';
 import 'src/features/dashboard/restaurant_dashboard_screen.dart';
 import 'src/features/menu/menu_management_screen.dart';
 import 'src/features/onboarding/restaurant_onboarding_screen.dart';
@@ -26,6 +27,10 @@ final restaurantRouterProvider = Provider<GoRouter>((ref) {
         path: '/login',
         name: LoginScreen.routeName,
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/access-denied',
+        builder: (context, state) => const AccessDeniedScreen(),
       ),
       GoRoute(
         path: '/onboarding',
@@ -74,19 +79,31 @@ final restaurantRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isLogin = state.matchedLocation == '/login';
       final isOnboarding = state.matchedLocation == '/onboarding';
+      final isAccessDenied = state.matchedLocation == '/access-denied';
       
-      // Se não está autenticado e não está em login/onboarding, redirecionar para login
-      if (!authState.isAuthenticated && !isLogin && !isOnboarding) {
+      // Se não está autenticado e não está em login/onboarding/access-denied, redirecionar para login
+      if (!authState.isAuthenticated && !isLogin && !isOnboarding && !isAccessDenied) {
         return '/login';
       }
       
-      // Se está autenticado e está em login, redirecionar para dashboard
-      if (authState.isAuthenticated && isLogin) {
-        return '/dashboard';
+      // Se está autenticado, verificar role
+      if (authState.isAuthenticated) {
+        // Se role não é RESTAURANT, mostrar acesso negado
+        if (authState.userRole != 'RESTAURANT') {
+          if (!isAccessDenied) {
+            return '/access-denied';
+          }
+          return null;
+        }
+        
+        // Role correta: se está em login/access-denied, redirecionar para dashboard
+        if (isLogin || isAccessDenied) {
+          return '/dashboard';
+        }
       }
       
-      // Se não completou onboarding e não está em onboarding/login
-      if (!completed && !isOnboarding && !isLogin) {
+      // Se não completou onboarding e não está em onboarding/login/access-denied
+      if (!completed && !isOnboarding && !isLogin && !isAccessDenied) {
         return '/onboarding';
       }
       

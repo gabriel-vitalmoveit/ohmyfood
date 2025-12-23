@@ -171,48 +171,82 @@ class ApiClient {
     }
   }
 
-  Future<List<OrderModel>> getUserOrders(String userId) async {
+  Future<List<OrderModel>> getUserOrders() async {
     try {
       final headers = await _getHeaders();
-      final response = await http.get(Uri.parse('$_baseUrl/orders/user/$userId'), headers: headers);
+      // Tentar /me primeiro, fallback para endpoint antigo se 404
+      var response = await http.get(
+        Uri.parse('$_baseUrl/orders/me'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 10));
+      
+      // Se 404, tentar endpoint antigo (compatibilidade)
+      if (response.statusCode == 404) {
+        final userId = _authRepository != null ? await _authRepository!.getUserId() : null;
+        if (userId != null) {
+          response = await http.get(
+            Uri.parse('$_baseUrl/orders/user/$userId'),
+            headers: headers,
+          ).timeout(const Duration(seconds: 10));
+        }
+      }
       
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         return data.map((json) => OrderModel.fromJson(json)).toList();
       }
+      
+      if (response.statusCode == 401) {
+        await _refreshTokenIfNeeded();
+        final newHeaders = await _getHeaders();
+        response = await http.get(
+          Uri.parse('$_baseUrl/orders/me'),
+          headers: newHeaders,
+        ).timeout(const Duration(seconds: 10));
+        
+        if (response.statusCode == 200) {
+          final List<dynamic> data = json.decode(response.body);
+          return data.map((json) => OrderModel.fromJson(json)).toList();
+        }
+      }
+      
       throw Exception('Failed to load orders: ${response.statusCode}');
     } catch (e) {
       return [];
     }
   }
 
-  Future<Map<String, dynamic>> createOrder(String userId, Map<String, dynamic> orderData) async {
+  Future<Map<String, dynamic>> createOrder(Map<String, dynamic> orderData) async {
     try {
-      // Backend usa: POST /api/orders/user/:userId
+      // Usar POST /api/orders (sem userId na URL - userId vem do token)
       final headers = await _getHeaders();
-      final response = await http.post(
-        Uri.parse('$_baseUrl/orders/user/$userId'),
+      var response = await http.post(
+        Uri.parse('$_baseUrl/orders'),
         headers: headers,
         body: json.encode(orderData),
-      );
+      ).timeout(const Duration(seconds: 10));
       
       if (response.statusCode == 401) {
         await _refreshTokenIfNeeded();
         final newHeaders = await _getHeaders();
-        final retryResponse = await http.post(
-          Uri.parse('$_baseUrl/orders/user/$userId'),
+        response = await http.post(
+          Uri.parse('$_baseUrl/orders'),
           headers: newHeaders,
           body: json.encode(orderData),
-        );
-        if (retryResponse.statusCode == 201 || retryResponse.statusCode == 200) {
-          return json.decode(retryResponse.body);
-        }
+        ).timeout(const Duration(seconds: 10));
       }
       
       if (response.statusCode == 201 || response.statusCode == 200) {
         return json.decode(response.body);
       }
-      throw Exception('Failed to create order: ${response.statusCode}');
+      
+      final errorBody = response.body;
+      try {
+        final error = json.decode(errorBody);
+        throw Exception(error['message'] ?? 'Failed to create order: ${response.statusCode}');
+      } catch (_) {
+        throw Exception('Failed to create order: ${response.statusCode}');
+      }
     } catch (e) {
       rethrow;
     }
