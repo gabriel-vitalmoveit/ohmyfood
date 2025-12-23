@@ -293,4 +293,3 @@ npx prisma studio
 ---
 
 **Última Atualização**: 2025-12-23
-
