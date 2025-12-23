@@ -1,7 +1,7 @@
 import { Injectable, InternalServerErrorException, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaClientKnownRequestError, Role } from '@prisma/client';
+import { Role } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../common';
 import { LoginDto } from './dto/login.dto';
@@ -36,10 +36,11 @@ export class AuthService {
 
       const tokens = await this.issueTokens(user.id, user.role);
       return { user, tokens };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error('Erro ao registrar usuário', error);
       
-      if (error instanceof PrismaClientKnownRequestError) {
+      // Verificar se é um erro do Prisma (tem código que começa com 'P')
+      if (error?.code && typeof error.code === 'string' && error.code.startsWith('P')) {
         // Erro P2002 = Unique constraint violation (email já existe)
         if (error.code === 'P2002') {
           throw new UnauthorizedException('Este email já está registado');
@@ -68,14 +69,15 @@ export class AuthService {
 
       const tokens = await this.issueTokens(user.id, user.role);
       return { user, tokens };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error('Erro ao fazer login', error);
       
       if (error instanceof UnauthorizedException) {
         throw error;
       }
       
-      if (error instanceof PrismaClientKnownRequestError) {
+      // Verificar se é um erro do Prisma (tem código que começa com 'P')
+      if (error?.code && typeof error.code === 'string' && error.code.startsWith('P')) {
         this.logger.error(`Prisma error code: ${error.code}`, error.meta);
         throw new InternalServerErrorException('Erro ao fazer login. Verifique a conexão com a base de dados.');
       }
