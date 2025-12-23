@@ -7,6 +7,7 @@ import 'src/features/auth/register_screen.dart';
 import 'src/features/cart/cart_screen.dart';
 import 'src/features/cart/checkout_screen.dart';
 import 'src/features/home/home_screen.dart';
+import 'src/features/landing/landing_page.dart';
 import 'src/features/onboarding/onboarding_screen.dart';
 import 'src/features/orders/orders_screen.dart';
 import 'src/features/profile/profile_screen.dart';
@@ -25,6 +26,11 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: _getInitialLocation(onboardingCompleted, authState.isAuthenticated),
     refreshListenable: _RouterRefresh(ref),
     routes: [
+      GoRoute(
+        path: '/',
+        name: LandingPage.routeName,
+        builder: (context, state) => const LandingPage(),
+      ),
       GoRoute(
         path: '/onboarding',
         name: OnboardingScreen.routeName,
@@ -104,25 +110,26 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isAuth = authState.isAuthenticated;
       final isAuthRoute = state.matchedLocation == '/login' || state.matchedLocation == '/register';
       final isOnboarding = state.matchedLocation == '/onboarding';
+      final isLanding = state.matchedLocation == '/';
       
-      // Se não completou onboarding e não está na tela de onboarding
-      if (!onboardingCompleted && !isOnboarding && !isAuthRoute) {
+      // Se está autenticado e tenta acessar landing/login/register, redireciona para home
+      if (isAuth && (isLanding || isAuthRoute)) {
+        return '/home';
+      }
+      
+      // Se não completou onboarding e não está na tela de onboarding/landing/auth
+      if (!onboardingCompleted && !isOnboarding && !isAuthRoute && !isLanding) {
         return '/onboarding';
       }
       
       // Se completou onboarding mas está na tela de onboarding
       if (onboardingCompleted && isOnboarding) {
-        return isAuth ? '/home' : '/login';
+        return isAuth ? '/home' : '/';
       }
       
       // Se não está autenticado e tenta acessar rotas protegidas
-      if (!isAuth && !isAuthRoute && !isOnboarding) {
-        return '/login';
-      }
-      
-      // Se está autenticado e tenta acessar login/register
-      if (isAuth && isAuthRoute) {
-        return '/home';
+      if (!isAuth && !isAuthRoute && !isOnboarding && !isLanding) {
+        return '/';
       }
       
       return null;
@@ -131,9 +138,9 @@ final routerProvider = Provider<GoRouter>((ref) {
 });
 
 String _getInitialLocation(bool onboardingCompleted, bool isAuthenticated) {
+  if (isAuthenticated) return '/home';
   if (!onboardingCompleted) return '/onboarding';
-  if (!isAuthenticated) return '/login';
-  return '/home';
+  return '/'; // Landing page
 }
 
 class _RouterRefresh extends ChangeNotifier {

@@ -8,7 +8,8 @@ class AppConfig {
     );
     
     if (envApiUrl.isNotEmpty) {
-      return envApiUrl;
+      // Garantir que a URL termina com /api
+      return _ensureApiPrefix(envApiUrl);
     }
     
     // URL do Railway (será configurada no deploy)
@@ -18,7 +19,7 @@ class AppConfig {
     );
     
     if (railwayUrl.isNotEmpty) {
-      return railwayUrl;
+      return _ensureApiPrefix(railwayUrl);
     }
     
     // Fallback para produção/desenvolvimento
@@ -28,6 +29,18 @@ class AppConfig {
     }
     
     return 'http://localhost:3000/api';
+  }
+  
+  // Garante que a URL termina com /api (sem duplicar)
+  static String _ensureApiPrefix(String url) {
+    final cleanUrl = url.trim();
+    if (cleanUrl.endsWith('/api')) {
+      return cleanUrl;
+    }
+    if (cleanUrl.endsWith('/')) {
+      return '${cleanUrl}api';
+    }
+    return '$cleanUrl/api';
   }
   
   // URLs de produção
