@@ -184,8 +184,19 @@ export class OrdersService {
       throw new NotFoundException('Pedido não encontrado');
     }
 
-    const statusHistory = (order.statusHistory as any) || {};
-    statusHistory[status] = new Date().toISOString();
+    // Validar transição de estado
+    if (!this.isValidTransition(order.status, status)) {
+      throw new BadRequestException(
+        `Transição inválida: não é possível mudar de ${order.status} para ${status}`,
+      );
+    }
+
+    // Atualizar histórico
+    const statusHistory = (order.statusHistory as any[]) || [];
+    statusHistory.push({
+      status,
+      timestamp: new Date().toISOString(),
+    });
 
     return this.prisma.order.update({
       where: { id: orderId },
@@ -194,5 +205,20 @@ export class OrdersService {
         statusHistory,
       },
     });
+  }
+
+  private isValidTransition(currentStatus: OrderStatus, newStatus: OrderStatus): boolean {
+    // Definir transições válidas
+    const validTransitions: Record<OrderStatus, OrderStatus[]> = {
+      [OrderStatus.DRAFT]: [OrderStatus.AWAITING_ACCEPTANCE, OrderStatus.CANCELLED],
+      [OrderStatus.AWAITING_ACCEPTANCE]: [OrderStatus.PREPARING, OrderStatus.CANCELLED],
+      [OrderStatus.PREPARING]: [OrderStatus.PICKUP, OrderStatus.CANCELLED],
+      [OrderStatus.PICKUP]: [OrderStatus.ON_THE_WAY, OrderStatus.CANCELLED],
+      [OrderStatus.ON_THE_WAY]: [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
+      [OrderStatus.DELIVERED]: [], // Estado final
+      [OrderStatus.CANCELLED]: [], // Estado final
+    };
+
+    return validTransitions[currentStatus]?.includes(newStatus) ?? false;
   }
 }
