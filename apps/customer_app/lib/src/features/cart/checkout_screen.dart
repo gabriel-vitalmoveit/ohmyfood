@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../cart/controllers/cart_controller.dart';
-import '../../services/api_client.dart';
 import '../../services/providers/api_providers.dart';
 import '../../services/providers/auth_providers.dart';
 
@@ -204,9 +203,19 @@ class CheckoutScreen extends HookConsumerWidget {
 
                   // Obter userId do auth
                   final authState = ref.read(authStateProvider);
-                  if (!authState.isAuthenticated || authState.userId == null) {
+                  if (!authState.isAuthenticated) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Erro: usuário não autenticado')),
+                    );
+                    return;
+                  }
+
+                  // Obter userId do repository
+                  final authRepository = ref.read(authRepositoryProvider);
+                  final userId = await authRepository.getUserId();
+                  if (userId == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Erro: usuário não encontrado')),
                     );
                     return;
                   }
@@ -233,7 +242,7 @@ class CheckoutScreen extends HookConsumerWidget {
                       'serviceFeeCents': cart.serviceFeeCents,
                     };
 
-                    final order = await apiClient.createOrder(authState.userId!, orderData);
+                    final order = await apiClient.createOrder(userId, orderData);
                     
                     controller.clear();
                     

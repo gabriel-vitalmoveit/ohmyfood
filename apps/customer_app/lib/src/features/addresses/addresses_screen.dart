@@ -2,7 +2,6 @@ import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import '../../services/api_client.dart';
 import '../../services/providers/api_providers.dart';
 
 final addressesProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {

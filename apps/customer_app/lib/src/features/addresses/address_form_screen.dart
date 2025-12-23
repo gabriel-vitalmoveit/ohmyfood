@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import '../../services/api_client.dart';
 import '../../services/providers/api_providers.dart';
 
 class AddressFormScreen extends HookConsumerWidget {
@@ -111,7 +110,7 @@ class AddressFormScreen extends HookConsumerWidget {
               decoration: const InputDecoration(
                 labelText: 'Rua *',
                 hintText: 'Rua da República',
-                prefixIcon: Icon(Icons.road),
+                prefixIcon: Icon(Icons.streetview),
               ),
             ),
             const SizedBox(height: OhMyFoodSpacing.md),
