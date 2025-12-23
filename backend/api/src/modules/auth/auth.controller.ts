@@ -18,4 +18,11 @@ export class AuthController {
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
+
+  @Post('refresh')
+  refresh(@Body('refreshToken') refreshToken: string) {
+    // Validar refresh token e retornar novos tokens
+    // Por enquanto, simplificado - em produção validar o token JWT
+    return this.authService.refreshFromToken(refreshToken);
+  }
 }

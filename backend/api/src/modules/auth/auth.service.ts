@@ -101,6 +101,35 @@ export class AuthService {
     return { tokens };
   }
 
+  async refreshFromToken(refreshToken: string) {
+    try {
+      // Verificar e decodificar o refresh token
+      const payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: this.configService.get<string>('jwt.refreshSecret'),
+      });
+
+      if (payload.type !== 'refresh') {
+        throw new UnauthorizedException('Token inválido');
+      }
+
+      // Buscar usuário para garantir que ainda existe
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+      });
+
+      if (!user) {
+        throw new UnauthorizedException('Usuário não encontrado');
+      }
+
+      // Emitir novos tokens
+      const tokens = await this.issueTokens(user.id, user.role);
+      return { tokens };
+    } catch (error) {
+      this.logger.error('Erro ao renovar token', error);
+      throw new UnauthorizedException('Token de refresh inválido ou expirado');
+    }
+  }
+
   private async issueTokens(userId: string, role: Role): Promise<AuthTokens> {
     const accessToken = await this.jwtService.signAsync(
       { sub: userId, role },

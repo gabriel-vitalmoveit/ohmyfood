@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../data/mock_data.dart';
+import '../../services/providers/courier_providers.dart';
 
 final onlineStatusProvider = StateProvider<bool>((ref) => true);
 
@@ -13,7 +13,7 @@ class DashboardScreen extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final online = ref.watch(onlineStatusProvider);
-    final nextOrder = availableCourierOrders.first;
+    final ordersAsync = ref.watch(availableOrdersProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -41,7 +41,14 @@ class DashboardScreen extends HookConsumerWidget {
                   ),
                   Switch(
                     value: online,
-                    onChanged: (value) => ref.read(onlineStatusProvider.notifier).state = value,
+                    onChanged: (value) {
+                      ref.read(onlineStatusProvider.notifier).state = value;
+                      if (value) {
+                        // Atualizar localização quando ficar online
+                        ref.read(courierLocationProvider.notifier).state = {'lat': 38.7369, 'lng': -9.1377};
+                        ref.invalidate(availableOrdersProvider);
+                      }
+                    },
                     activeColor: OhMyFoodColors.courierAccent,
                   ),
                 ],
@@ -51,72 +58,127 @@ class DashboardScreen extends HookConsumerWidget {
               const SizedBox(height: OhMyFoodSpacing.md),
               Row(
                 children: [
-                  Expanded(child: _StatCard(label: 'Ganhos', value: '${(courierStats.earningsTodayCents / 100).toStringAsFixed(2)} €')),
+                  Expanded(child: _StatCard(label: 'Ganhos', value: '0.00 €')),
                   const SizedBox(width: OhMyFoodSpacing.md),
-                  Expanded(child: _StatCard(label: 'Entregas', value: '${courierStats.completedToday}')), 
-                ],
-              ),
-              const SizedBox(height: OhMyFoodSpacing.md),
-              Row(
-                children: [
-                  Expanded(child: _StatCard(label: 'KMs', value: courierStats.kilometers.toStringAsFixed(1))),
-                  const SizedBox(width: OhMyFoodSpacing.md),
-                  Expanded(child: _StatCard(label: 'Rating', value: courierStats.rating.toStringAsFixed(2))),
+                  Expanded(child: _StatCard(label: 'Entregas', value: '0')),
                 ],
               ),
               const SizedBox(height: OhMyFoodSpacing.xl),
-              Text('Pedido destacado', style: OhMyFoodTypography.titleMd.copyWith(color: Colors.white)),
+              Text('Pedidos disponíveis', style: OhMyFoodTypography.titleMd.copyWith(color: Colors.white)),
               const SizedBox(height: OhMyFoodSpacing.md),
               Expanded(
-                child: Card(
-                  color: Colors.white10,
-                  child: Padding(
-                    padding: const EdgeInsets.all(OhMyFoodSpacing.lg),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(nextOrder.pickupAddress, style: OhMyFoodTypography.bodyBold.copyWith(color: Colors.white)),
-                        const SizedBox(height: OhMyFoodSpacing.xs),
-                        Row(
-                          children: [
-                            const Icon(Icons.navigation, size: 16, color: Colors.white70),
-                            const SizedBox(width: 4),
-                            Text('${nextOrder.distanceKm.toStringAsFixed(1)} km até ao cliente',
-                                style: OhMyFoodTypography.caption.copyWith(color: Colors.white70)),
-                          ],
-                        ),
-                        const Divider(height: OhMyFoodSpacing.xl, color: Colors.white24),
-                        Text('Entrega: ${nextOrder.dropoffAddress}',
-                            style: OhMyFoodTypography.body.copyWith(color: Colors.white)),
-                        const SizedBox(height: OhMyFoodSpacing.md),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('Pronto em ${nextOrder.readyInMinutes} min',
-                                style: OhMyFoodTypography.caption.copyWith(color: Colors.white70)),
-                            Text('+ ${(nextOrder.earningCents / 100).toStringAsFixed(2)} €',
-                                style: OhMyFoodTypography.bodyBold.copyWith(color: OhMyFoodColors.courierAccent)),
-                          ],
-                        ),
-                        const Spacer(),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => context.go('/orders'),
-                                child: const Text('Ver lista completa'),
-                              ),
+                child: ordersAsync.when(
+                  data: (orders) {
+                    if (orders.isEmpty) {
+                      return Card(
+                        color: Colors.white10,
+                        child: Padding(
+                          padding: const EdgeInsets.all(OhMyFoodSpacing.xl),
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.inbox_outlined, size: 48, color: Colors.white70),
+                                const SizedBox(height: OhMyFoodSpacing.md),
+                                Text('Nenhum pedido disponível', style: OhMyFoodTypography.body.copyWith(color: Colors.white70)),
+                                const SizedBox(height: OhMyFoodSpacing.sm),
+                                Text('Fique online para receber pedidos', style: OhMyFoodTypography.caption.copyWith(color: Colors.white54)),
+                              ],
                             ),
-                            const SizedBox(width: OhMyFoodSpacing.md),
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: () => context.go('/orders/${nextOrder.id}'),
-                                child: const Text('Aceitar pedido'),
-                              ),
+                          ),
+                        ),
+                      );
+                    }
+                    final nextOrder = orders.first;
+                    return Card(
+                      color: Colors.white10,
+                      child: Padding(
+                        padding: const EdgeInsets.all(OhMyFoodSpacing.lg),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              nextOrder['restaurant']?['name'] ?? 'Restaurante',
+                              style: OhMyFoodTypography.bodyBold.copyWith(color: Colors.white),
+                            ),
+                            const SizedBox(height: OhMyFoodSpacing.xs),
+                            Row(
+                              children: [
+                                const Icon(Icons.location_on, size: 16, color: Colors.white70),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${(nextOrder['restaurant']?['lat'] as num?)?.toStringAsFixed(4) ?? 'N/A'}, ${(nextOrder['restaurant']?['lng'] as num?)?.toStringAsFixed(4) ?? 'N/A'}',
+                                  style: OhMyFoodTypography.caption.copyWith(color: Colors.white70),
+                                ),
+                              ],
+                            ),
+                            const Divider(height: OhMyFoodSpacing.xl, color: Colors.white24),
+                            Text(
+                              'Pedido: ${nextOrder['id']}',
+                              style: OhMyFoodTypography.body.copyWith(color: Colors.white),
+                            ),
+                            const SizedBox(height: OhMyFoodSpacing.sm),
+                            Text(
+                              'Cliente: ${nextOrder['user']?['displayName'] ?? nextOrder['user']?['email'] ?? 'N/A'}',
+                              style: OhMyFoodTypography.body.copyWith(color: Colors.white),
+                            ),
+                            const SizedBox(height: OhMyFoodSpacing.md),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Status: ${nextOrder['status']}',
+                                  style: OhMyFoodTypography.caption.copyWith(color: Colors.white70),
+                                ),
+                                Text(
+                                  '+ ${((nextOrder['total'] ?? 0) / 100).toStringAsFixed(2)} €',
+                                  style: OhMyFoodTypography.bodyBold.copyWith(color: OhMyFoodColors.courierAccent),
+                                ),
+                              ],
+                            ),
+                            const Spacer(),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () => context.go('/orders'),
+                                    child: const Text('Ver lista completa'),
+                                  ),
+                                ),
+                                const SizedBox(width: OhMyFoodSpacing.md),
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: () => context.go('/orders/${nextOrder['id']}'),
+                                    child: const Text('Aceitar pedido'),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
+                      ),
+                    );
+                  },
+                  loading: () => const Center(child: CircularProgressIndicator(color: Colors.white)),
+                  error: (error, stack) => Card(
+                    color: Colors.white10,
+                    child: Padding(
+                      padding: const EdgeInsets.all(OhMyFoodSpacing.xl),
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.error_outline, size: 48, color: Colors.white70),
+                            const SizedBox(height: OhMyFoodSpacing.md),
+                            Text('Erro ao carregar pedidos', style: OhMyFoodTypography.body.copyWith(color: Colors.white70)),
+                            const SizedBox(height: OhMyFoodSpacing.sm),
+                            ElevatedButton(
+                              onPressed: () => ref.invalidate(availableOrdersProvider),
+                              child: const Text('Tentar novamente'),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),

@@ -75,4 +75,124 @@ export class OrdersService {
       data: { status: OrderStatus.AWAITING_ACCEPTANCE },
     });
   }
+
+  async listForRestaurant(restaurantId: string, status?: OrderStatus) {
+    const where: any = { restaurantId };
+    if (status) {
+      where.status = status;
+    }
+
+    return this.prisma.order.findMany({
+      where,
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            displayName: true,
+            phone: true,
+          },
+        },
+        items: true,
+        payment: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+  }
+
+  async listAvailableForCourier(courierLat?: number, courierLng?: number, maxDistanceKm = 10) {
+    // Pedidos que estão aguardando aceitação do restaurante ou prontos para pickup
+    const where: any = {
+      status: {
+        in: [OrderStatus.AWAITING_ACCEPTANCE, OrderStatus.PREPARING, OrderStatus.PICKUP],
+      },
+      courierId: null, // Sem courier atribuído
+    };
+
+    const orders = await this.prisma.order.findMany({
+      where,
+      include: {
+        restaurant: {
+          select: {
+            id: true,
+            name: true,
+            lat: true,
+            lng: true,
+            imageUrl: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            displayName: true,
+            phone: true,
+          },
+        },
+        items: {
+          take: 3,
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 50,
+    });
+
+    // Se coordenadas do courier foram fornecidas, filtrar por distância
+    if (courierLat && courierLng) {
+      return orders.filter((order) => {
+        const distance = this.calculateDistance(
+          courierLat,
+          courierLng,
+          order.restaurant.lat,
+          order.restaurant.lng,
+        );
+        return distance <= maxDistanceKm;
+      });
+    }
+
+    return orders;
+  }
+
+  private calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371; // Raio da Terra em km
+    const dLat = this.deg2rad(lat2 - lat1);
+    const dLng = this.deg2rad(lng2 - lng1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.deg2rad(lat1)) * Math.cos(this.deg2rad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  private deg2rad(deg: number): number {
+    return deg * (Math.PI / 180);
+  }
+
+  async assignCourier(orderId: string, courierId: string) {
+    return this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        courierId,
+        status: OrderStatus.PICKUP,
+      },
+    });
+  }
+
+  async updateStatus(orderId: string, status: OrderStatus) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) {
+      throw new NotFoundException('Pedido não encontrado');
+    }
+
+    const statusHistory = (order.statusHistory as any) || {};
+    statusHistory[status] = new Date().toISOString();
+
+    return this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status,
+        statusHistory,
+      },
+    });
+  }
 }

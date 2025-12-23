@@ -9,11 +9,23 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   return ApiClient(authRepository: authRepository);
 });
 
-// Provider para lista de restaurantes
+// Provider para search query
+final restaurantSearchProvider = StateProvider<String>((ref) => '');
+
+// Provider para categoria selecionada
+final restaurantCategoryProvider = StateProvider<String>((ref) => 'Todos');
+
+// Provider para lista de restaurantes (com search e category)
 final restaurantsProvider = FutureProvider<List<RestaurantModel>>((ref) async {
   final apiClient = ref.watch(apiClientProvider);
+  final search = ref.watch(restaurantSearchProvider);
+  final category = ref.watch(restaurantCategoryProvider);
+  
   try {
-    final restaurants = await apiClient.getRestaurants();
+    final restaurants = await apiClient.getRestaurants(
+      category: category == 'Todos' ? null : category,
+      search: search.isEmpty ? null : search,
+    );
     return restaurants;
   } catch (e) {
     // Se falhar, retorna lista vazia (pode adicionar tratamento de erro melhor)

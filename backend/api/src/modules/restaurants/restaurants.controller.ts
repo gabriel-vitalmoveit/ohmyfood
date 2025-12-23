@@ -10,8 +10,16 @@ export class RestaurantsController {
 
   @Get()
   @ApiQuery({ name: 'category', required: false })
-  list(@Query('category') category?: string) {
-    return this.restaurantsService.list({ category });
+  @ApiQuery({ name: 'search', required: false })
+  @ApiQuery({ name: 'take', required: false, type: Number })
+  @ApiQuery({ name: 'skip', required: false, type: Number })
+  list(
+    @Query('category') category?: string,
+    @Query('search') search?: string,
+    @Query('take') take?: number,
+    @Query('skip') skip?: number,
+  ) {
+    return this.restaurantsService.list({ category, search, take, skip });
   }
 
   @Get(':id')
@@ -22,5 +30,16 @@ export class RestaurantsController {
   @Post()
   create(@Body() data: Prisma.RestaurantCreateInput) {
     return this.restaurantsService.create(data);
+  }
+
+  @Get(':id/stats')
+  getStats(@Param('id') id: string) {
+    return this.restaurantsService.getStats(id);
+  }
+
+  @Get(':id/orders')
+  @ApiQuery({ name: 'status', required: false })
+  getOrders(@Param('id') id: string, @Query('status') status?: string) {
+    return this.restaurantsService.getOrders(id, status);
   }
 }

@@ -16,7 +16,8 @@ class HomeScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selectedCategory = ref.watch(_selectedCategoryProvider);
+    final selectedCategory = ref.watch(restaurantCategoryProvider);
+    final searchQuery = ref.watch(restaurantSearchProvider);
     final cart = ref.watch(cartControllerProvider);
     final restaurantsAsync = ref.watch(restaurantsProvider);
 
@@ -34,12 +35,7 @@ class HomeScreen extends HookConsumerWidget {
           }
         }
 
-        final filteredRestaurants = restaurants.where((restaurant) {
-          if (selectedCategory == 'Todos') return true;
-          return restaurant.categories.contains(selectedCategory);
-        }).toList();
-
-        return _buildContent(context, ref, cart, filteredRestaurants, allCategories, selectedCategory);
+        return _buildContent(context, ref, cart, restaurants, allCategories, selectedCategory, searchQuery);
       },
       loading: () => _buildLoading(context, ref, cart),
       error: (error, stack) => _buildError(context, ref, cart, error),
@@ -53,6 +49,7 @@ class HomeScreen extends HookConsumerWidget {
     List<RestaurantModel> restaurants,
     List<String> categories,
     String selectedCategory,
+    String searchQuery,
   ) {
 
     return OhMyFoodAppScaffold(
@@ -105,7 +102,13 @@ class HomeScreen extends HookConsumerWidget {
                 const SizedBox(height: 8),
                 _HeroBanner(),
                 const SizedBox(height: OhMyFoodSpacing.lg),
-                _SearchBar(),
+                _SearchBar(
+                  onChanged: (value) {
+                    ref.read(restaurantSearchProvider.notifier).state = value;
+                    ref.invalidate(restaurantsProvider);
+                  },
+                  initialValue: searchQuery,
+                ),
                 const SizedBox(height: OhMyFoodSpacing.lg),
                 OhMyFoodSection(
                   title: 'Categorias',
@@ -113,7 +116,10 @@ class HomeScreen extends HookConsumerWidget {
                     items: categories,
                     labelBuilder: (category) => category,
                     selected: selectedCategory,
-                    onSelected: (value) => ref.read(_selectedCategoryProvider.notifier).state = value,
+                    onSelected: (value) {
+                      ref.read(restaurantCategoryProvider.notifier).state = value;
+                      ref.invalidate(restaurantsProvider);
+                    },
                   ),
                 ),
                 OhMyFoodSection(
@@ -217,8 +223,63 @@ class HomeScreen extends HookConsumerWidget {
           ),
         ),
       ],
-      body: const Center(
-        child: CircularProgressIndicator(),
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 8),
+                _HeroBanner(),
+                const SizedBox(height: OhMyFoodSpacing.lg),
+                _SearchBar(onChanged: (_) {}, initialValue: ''),
+                const SizedBox(height: OhMyFoodSpacing.lg),
+                // Skeleton para categorias
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: OhMyFoodSpacing.md),
+                  child: Shimmer.fromColors(
+                    baseColor: OhMyFoodColors.neutral200,
+                    highlightColor: OhMyFoodColors.neutral100,
+                    child: Row(
+                      children: List.generate(4, (index) => Container(
+                        margin: const EdgeInsets.only(right: OhMyFoodSpacing.sm),
+                        width: 80,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      )),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: OhMyFoodSpacing.xl),
+                // Skeleton para restaurantes
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: OhMyFoodSpacing.md),
+                  child: Column(
+                    children: List.generate(3, (index) => Padding(
+                      padding: const EdgeInsets.only(bottom: OhMyFoodSpacing.md),
+                      child: Shimmer.fromColors(
+                        baseColor: OhMyFoodColors.neutral200,
+                        highlightColor: OhMyFoodColors.neutral100,
+                        child: Card(
+                          child: Container(
+                            height: 116,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                      ),
+                    )),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -276,7 +337,6 @@ class HomeScreen extends HookConsumerWidget {
   }
 }
 
-final _selectedCategoryProvider = StateProvider<String>((ref) => 'Todos');
 
 class _HeroBanner extends StatelessWidget {
   @override
@@ -355,7 +415,31 @@ class _HeroBanner extends StatelessWidget {
   }
 }
 
-class _SearchBar extends StatelessWidget {
+class _SearchBar extends StatefulWidget {
+  const _SearchBar({required this.onChanged, required this.initialValue});
+
+  final ValueChanged<String> onChanged;
+  final String initialValue;
+
+  @override
+  State<_SearchBar> createState() => _SearchBarState();
+}
+
+class _SearchBarState extends State<_SearchBar> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -372,21 +456,35 @@ class _SearchBar extends StatelessWidget {
         ],
       ),
       child: TextField(
+        controller: _controller,
+        onChanged: (value) {
+          widget.onChanged(value);
+          setState(() {}); // Atualizar UI para mostrar/ocultar botão clear
+        },
         decoration: InputDecoration(
           hintText: 'Pesquisar restaurantes, pratos ou farmácias',
           prefixIcon: const Icon(Icons.search, color: OhMyFoodColors.neutral400),
-          suffixIcon: Container(
-            margin: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: OhMyFoodColors.neutral100,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.tune_rounded, size: 20),
-              color: OhMyFoodColors.neutral600,
-            ),
-          ),
+          suffixIcon: _controller.text.isNotEmpty
+              ? IconButton(
+                  onPressed: () {
+                    _controller.clear();
+                    widget.onChanged('');
+                  },
+                  icon: const Icon(Icons.clear, size: 20),
+                  color: OhMyFoodColors.neutral600,
+                )
+              : Container(
+                  margin: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: OhMyFoodColors.neutral100,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: IconButton(
+                    onPressed: () {},
+                    icon: const Icon(Icons.tune_rounded, size: 20),
+                    color: OhMyFoodColors.neutral600,
+                  ),
+                ),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         ),

@@ -30,13 +30,30 @@ class ApiClient {
     return headers;
   }
 
-  Future<List<RestaurantModel>> getRestaurants({String? category}) async {
+  Future<List<RestaurantModel>> getRestaurants({
+    String? category,
+    String? search,
+    int? take,
+    int? skip,
+  }) async {
     try {
-      final uri = Uri.parse('$_baseUrl/restaurants').replace(
-        queryParameters: category != null ? {'category': category} : null,
-      );
+      final queryParams = <String, String>{};
+      if (category != null && category.isNotEmpty && category != 'Todos') {
+        queryParams['category'] = category;
+      }
+      if (search != null && search.isNotEmpty) {
+        queryParams['search'] = search;
+      }
+      if (take != null) {
+        queryParams['take'] = take.toString();
+      }
+      if (skip != null) {
+        queryParams['skip'] = skip.toString();
+      }
+
+      final uri = Uri.parse('$_baseUrl/restaurants').replace(queryParameters: queryParams.isEmpty ? null : queryParams);
       final headers = await _getHeaders();
-      final response = await http.get(uri, headers: headers);
+      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
       
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
