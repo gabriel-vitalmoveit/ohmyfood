@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_models/shared_models.dart';
 import '../config/app_config.dart';
 import 'auth_repository.dart';
+import 'auth_service.dart';
 
 class ApiClient {
   ApiClient({
@@ -14,14 +15,14 @@ class ApiClient {
   final String _baseUrl;
   final AuthRepository? _authRepository;
 
-  Future<Map<String, String>> _getHeaders({bool retry = false}) async {
+  Future<Map<String, String>> _getHeaders() async {
     final headers = <String, String>{
       'Content-Type': 'application/json',
     };
 
     // Adicionar token de autenticação se disponível
     if (_authRepository != null) {
-      final token = await _authRepository!.getAccessToken();
+      final token = await _authRepository.getAccessToken();
       if (token != null && token.isNotEmpty) {
         headers['Authorization'] = 'Bearer $token';
       }
@@ -34,18 +35,17 @@ class ApiClient {
     if (_authRepository == null) return;
     
     try {
-      final refreshToken = await _authRepository!.getRefreshToken();
+      final refreshToken = await _authRepository.getRefreshToken();
       if (refreshToken == null || refreshToken.isEmpty) return;
 
-      // Importar AuthService dinamicamente para evitar dependência circular
       final authService = AuthService();
       final newTokens = await authService.refreshToken(refreshToken);
       
       // Salvar novos tokens
-      await _authRepository!.saveTokens(newTokens);
+      await _authRepository.saveTokens(newTokens);
     } catch (e) {
       // Se refresh falhar, limpar autenticação
-      await _authRepository!.clearAuth();
+      await _authRepository.clearAuth();
     }
   }
 
