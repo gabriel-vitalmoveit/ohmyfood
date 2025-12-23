@@ -87,8 +87,58 @@ class ApiClient {
       }
       throw Exception('Failed to load restaurants: ${response.statusCode}');
     } catch (e) {
-      // Fallback to mock data if API is not available
+      // Log error but don't throw - return empty list for graceful degradation
+      print('Error loading restaurants: $e');
       return [];
+    }
+  }
+
+  // Paginated version
+  Future<Map<String, dynamic>> getRestaurantsPaginated({
+    String? category,
+    String? search,
+    int page = 0,
+    int pageSize = 20,
+  }) async {
+    try {
+      final queryParams = <String, String>{};
+      if (category != null && category.isNotEmpty && category != 'Todos') {
+        queryParams['category'] = category;
+      }
+      if (search != null && search.isNotEmpty) {
+        queryParams['search'] = search;
+      }
+      queryParams['take'] = pageSize.toString();
+      queryParams['skip'] = (page * pageSize).toString();
+
+      final uri = Uri.parse('$_baseUrl/restaurants').replace(queryParameters: queryParams);
+      final headers = await _getHeaders();
+      var response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 401) {
+        await _refreshTokenIfNeeded();
+        final newHeaders = await _getHeaders();
+        response = await http.get(uri, headers: newHeaders).timeout(const Duration(seconds: 10));
+      }
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        final restaurants = data.map((json) => RestaurantModel.fromJson(json)).toList();
+        
+        return {
+          'items': restaurants,
+          'hasMore': restaurants.length == pageSize, // Assume more if we got full page
+          'page': page,
+        };
+      }
+      throw Exception('Failed to load restaurants: ${response.statusCode}');
+    } catch (e) {
+      print('Error loading restaurants: $e');
+      return {
+        'items': <RestaurantModel>[],
+        'hasMore': false,
+        'page': page,
+      };
     }
   }
 
