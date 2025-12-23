@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-import { UsersModule } from '../users/users.module';
 import { PrismaService } from '../common';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -24,7 +23,6 @@ import { RolesGuard } from './guards/roles.guard';
       }),
       inject: [ConfigService],
     }),
-    UsersModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, PrismaService, JwtStrategy, JwtAuthGuard, RolesGuard],

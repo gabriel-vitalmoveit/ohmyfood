@@ -49,4 +49,54 @@ export class MenuController {
   delete(@Param('id') id: string) {
     return this.menuService.delete(id);
   }
+
+  // OptionGroups
+  @Post(':menuItemId/option-groups')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.RESTAURANT, Role.ADMIN)
+  @ApiBearerAuth()
+  createOptionGroup(@Param('menuItemId') menuItemId: string, @Body() data: any) {
+    return this.menuService.createOptionGroup(menuItemId, data);
+  }
+
+  @Put('option-groups/:optionGroupId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.RESTAURANT, Role.ADMIN)
+  @ApiBearerAuth()
+  updateOptionGroup(@Param('optionGroupId') optionGroupId: string, @Body() data: any) {
+    return this.menuService.updateOptionGroup(optionGroupId, data);
+  }
+
+  @Delete('option-groups/:optionGroupId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.RESTAURANT, Role.ADMIN)
+  @ApiBearerAuth()
+  deleteOptionGroup(@Param('optionGroupId') optionGroupId: string) {
+    return this.menuService.deleteOptionGroup(optionGroupId);
+  }
+
+  // Options
+  @Post('option-groups/:optionGroupId/options')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.RESTAURANT, Role.ADMIN)
+  @ApiBearerAuth()
+  createOption(@Param('optionGroupId') optionGroupId: string, @Body() data: any) {
+    return this.menuService.createOption(optionGroupId, data);
+  }
+
+  @Put('options/:optionId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.RESTAURANT, Role.ADMIN)
+  @ApiBearerAuth()
+  updateOption(@Param('optionId') optionId: string, @Body() data: any) {
+    return this.menuService.updateOption(optionId, data);
+  }
+
+  @Delete('options/:optionId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.RESTAURANT, Role.ADMIN)
+  @ApiBearerAuth()
+  deleteOption(@Param('optionId') optionId: string) {
+    return this.menuService.deleteOption(optionId);
+  }
 }

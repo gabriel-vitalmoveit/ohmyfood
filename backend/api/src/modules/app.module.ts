@@ -9,6 +9,7 @@ import { OrdersModule } from './orders/orders.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PromosModule } from './promos/promos.module';
 import { RestaurantsModule } from './restaurants/restaurants.module';
+import { SupportModule } from './support/support.module';
 import { UsersModule } from './users/users.module';
 import configuration from '../shared/configuration';
 
@@ -24,6 +25,7 @@ import configuration from '../shared/configuration';
     PaymentsModule,
     PromosModule,
     ChatModule,
+    SupportModule,
     AdminModule,
   ],
 })

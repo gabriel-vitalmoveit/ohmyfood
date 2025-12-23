@@ -44,4 +44,53 @@ export class MenuService {
       include: { optionGroups: { include: { options: true } } },
     });
   }
+
+  // OptionGroups
+  async createOptionGroup(menuItemId: string, data: { name: string; minSelect: number; maxSelect: number }) {
+    return this.prisma.optionGroup.create({
+      data: {
+        ...data,
+        menuItem: { connect: { id: menuItemId } },
+      },
+      include: { options: true },
+    });
+  }
+
+  async updateOptionGroup(optionGroupId: string, data: { name?: string; minSelect?: number; maxSelect?: number }) {
+    return this.prisma.optionGroup.update({
+      where: { id: optionGroupId },
+      data,
+      include: { options: true },
+    });
+  }
+
+  async deleteOptionGroup(optionGroupId: string) {
+    return this.prisma.optionGroup.delete({
+      where: { id: optionGroupId },
+    });
+  }
+
+  // Options
+  async createOption(optionGroupId: string, data: { name: string; priceCents: number; available?: boolean }) {
+    return this.prisma.option.create({
+      data: {
+        ...data,
+        available: data.available ?? true,
+        optionGroup: { connect: { id: optionGroupId } },
+      },
+    });
+  }
+
+  async updateOption(optionId: string, data: { name?: string; priceCents?: number; available?: boolean }) {
+    return this.prisma.option.update({
+      where: { id: optionId },
+      data,
+    });
+  }
+
+  async deleteOption(optionId: string) {
+    return this.prisma.option.delete({
+      where: { id: optionId },
+    });
+  }
 }
