@@ -109,4 +109,3 @@ npx prisma db pull
 ## 📚 Documentação Completa
 
 Veja `CRIAR_BASE_DADOS.md` para guia detalhado.
-
