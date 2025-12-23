@@ -127,33 +127,6 @@ class HereMapsService {
     }
   }
 
-  /// Extrai polyline da rota
-  List<Map<String, double>> _extractPolyline(Map<String, dynamic> section) {
-    final polyline = <Map<String, double>>[];
-    final polylineData = section['polyline'] as String?;
-    
-    if (polylineData != null) {
-      // HERE Maps usa formato polyline encoded
-      // Por simplicidade, retornamos apenas start e end points
-      // Em produção, usar biblioteca para decodificar polyline
-      final actions = section['actions'] as List?;
-      if (actions != null) {
-        for (final action in actions) {
-          final location = action['location'] as Map?;
-          if (location != null) {
-            final lat = (location['lat'] as num?)?.toDouble();
-            final lng = (location['lng'] as num?)?.toDouble();
-            if (lat != null && lng != null) {
-              polyline.add({'lat': lat, 'lng': lng});
-            }
-          }
-        }
-      }
-    }
-    
-    return polyline;
-  }
-
   /// Cálculo simples de rota (fallback)
   Map<String, dynamic> _calculateSimpleRoute(
     double startLat,
