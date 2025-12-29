@@ -1,12 +1,7 @@
-name: Deploy Courier App (cPanel)
+name: Deploy Courier App (cPanel) [DEPRECATED]
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "apps/courier_app/**"
-      - "deploy-courier.sh"
-      - ".github/workflows/deploy-courier.yml"
+  workflow_dispatch:
 
 concurrency:
   group: deploy-courier-main

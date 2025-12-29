@@ -1,121 +1,95 @@
-# DEPLOYMENT (cPanel) — Courier App (`estafetas.ohmyfood.eu`)
+# DEPLOYMENT (cPanel) — Builds automáticos (GitHub Releases) + deploy manual
 
 ## Objetivo
 
-Publicar automaticamente o `apps/courier_app` (Flutter Web) no subdomínio **`estafetas.ohmyfood.eu`** via cPanel.
+Como **FTP (porta 21)** está bloqueado no runner, o fluxo oficial passa a ser:
 
-## Problema atual (P0)
+- **GitHub Actions** faz **rebuild automático** dos Flutter Web apps
+- publica os **ZIPs num GitHub Release**
+- o deploy é feito **manualmente via cPanel File Manager** (upload + extract)
 
-O subdomínio **`estafetas.ohmyfood.eu`** não funciona por (no mínimo) um destes motivos:
+Apps cobertas:
 
-- **DNS/subdomínio**: o repo e documentação histórica referem **`estafeta.ohmyfood.eu`** (singular) — se o DNS estiver apontado para `estafetas`, não vai servir o docroot correto.
-- **Docroot sem build**: no snapshot do repo, `public_html/estafeta.ohmyfood.eu/` tinha apenas `.htaccess` (sem `index.html`, `main.dart.js`, `assets/`, etc.).
-- **`.htaccess` incorreto para subdomínio**: para subdomínios com docroot próprio, `RewriteBase` deve ser `/` e a regra deve apontar para `/index.html`.
+- **estafeta**: `apps/courier_app` → `estafeta.ohmyfood.eu`
+- **restaurante**: `apps/restaurant_app` → `restaurante.ohmyfood.eu`
+- **cliente**: `apps/customer_app` → `ohmyfood.eu`
 
-Neste commit foram adicionados/ajustados:
-- `public_html/estafetas.ohmyfood.eu/.htaccess`
-- correções em `public_html/estafeta.ohmyfood.eu/.htaccess` e `public_html/restaurante.ohmyfood.eu/.htaccess` (RewriteBase `/`)
+## GitHub Actions (rebuild automático)
 
-## Configuração de ambiente (Flutter web)
+Workflow:
 
-O `courier_app` lê variáveis **compile-time** via `--dart-define`:
+- `/.github/workflows/deploy-apps.yml`
 
-- `ENV=prod`
-- `API_BASE_URL=https://api.ohmyfood.eu` (ou a URL que quiser; o app normaliza para terminar em `/api`)
-- `HERE_MAPS_API_KEY=<valor>`
+### Quando dispara
 
-### Importante (HERE key)
+Em `push` para `main` quando muda algo em:
 
-Não commitar a key no código. O app faz fallback para rota simples se a key estiver vazia.
+- `apps/courier_app/**`
+- `apps/restaurant_app/**`
+- `apps/customer_app/**`
+- `packages/**` (rebuild das apps afetadas por packages partilhados)
 
-## Deploy manual (P1)
+### O que ele faz
 
-### Opção A — Script (recomendado)
-
-1. (Opcional) Editar `apps/courier_app/.env.production` e preencher **apenas** `API_BASE_URL`.  
-   **Não** preencher `HERE_MAPS_API_KEY` no git; usar env local.
-
-2. Exportar credenciais (exemplo):
-
-```bash
-export CPANEL_HOST="ftp.seu-dominio.com"
-export CPANEL_USER="seu_user"
-export CPANEL_PASS="*****"
-export CPANEL_PROTOCOL="ftp"   # ou ftps / sftp
-export CPANEL_PORT="21"
-export CPANEL_REMOTE_DIR="/public_html/estafetas.ohmyfood.eu"
-
-export ENV="prod"
-export API_BASE_URL="https://api.ohmyfood.eu"
-export HERE_MAPS_API_KEY="*****"
-```
-
-3. Executar:
-
-```bash
-./deploy-courier.sh
-```
-
-O script faz build e tenta upload via `lftp` (se existir). Se não tiver `lftp`, ele cria um zip em `dist/` para upload manual.
-
-### Opção B — Upload manual via cPanel File Manager
-
-1. Build local:
-
-```bash
-cd apps/courier_app
-flutter clean
-flutter pub get
-flutter build web --release \
-  --dart-define=ENV=prod \
-  --dart-define=API_BASE_URL=https://api.ohmyfood.eu \
-  --dart-define=HERE_MAPS_API_KEY=SEU_VALOR
-```
-
-2. No cPanel File Manager, fazer upload de **todo o conteúdo** de `apps/courier_app/build/web/` para o docroot do subdomínio:
-- recomendado: `/public_html/estafetas.ohmyfood.eu/`
-
-3. Garantir que existe `.htaccess` com SPA routing (exemplo já no repo):
-- `public_html/estafetas.ohmyfood.eu/.htaccess`
-
-## Deploy automático (P2) — GitHub Actions
-
-Foi criado:
-- `.github/workflows/deploy-courier.yml`
-
-### Trigger
-
-- `push` para `main` com alterações em `apps/courier_app/**`
+- Faz `flutter build web --release` (as **3 apps**) com `--dart-define`
+- Empacota `build/web` + `.htaccess` (SPA routing) em ZIP
+- Cria um **GitHub Release** com tag: `web-build-YYYYMMDD-HHMMSS`
+- Anexa os ZIPs como assets do release e comenta no commit com o link
 
 ### Secrets necessários (GitHub)
 
-- `CPANEL_FTP_SERVER`
-- `CPANEL_FTP_USERNAME`
-- `CPANEL_FTP_PASSWORD`
-- `CPANEL_FTP_PORT` (opcional; default 21)
-- `CPANEL_FTP_SERVER_DIR` (ex.: `/public_html/estafetas.ohmyfood.eu/`)
+Configurar em **GitHub → Settings → Secrets and variables → Actions → Secrets**:
 
-- `COURIER_API_BASE_URL` (ex.: `https://api.ohmyfood.eu`)
-- `HERE_MAPS_API_KEY`
+- `API_BASE_URL`: `https://api.ohmyfood.eu`
+- `ENV`: `prod`
+- `HERE_MAPS_API_KEY`: (opcional; recomendado para `courier_app`)
 
-## Troubleshooting
+> Nota: se `HERE_MAPS_API_KEY` estiver vazio, o courier usa fallback.
 
-### 1) Subdomínio não abre / NXDOMAIN
-- DNS do `estafetas.ohmyfood.eu` não existe/está errado.
-- Confirmar no cPanel o subdomínio e docroot.
+## Deploy manual via cPanel File Manager (sem FTP)
 
-### 2) Abre mas dá página em branco
-- Falta `index.html` ou faltam assets (`main.dart.js`, `assets/`, `canvaskit/`).
-- Ver Console do browser (F12) e Network tab para 404.
+### 1) Baixar o ZIP do Release
 
-### 3) Rotas dão 404 (ex.: /orders/123)
-- `.htaccess` não está correto (SPA routing).
+1. Ir a **GitHub → Releases**
+2. Abrir o release com tag `web-build-...`
+3. Fazer download do ZIP do domínio que quer atualizar:
+   - `estafeta.ohmyfood.eu_web_<STAMP>.zip`
+   - `restaurante.ohmyfood.eu_web_<STAMP>.zip`
+   - `ohmyfood.eu_web_<STAMP>.zip`
 
-### 4) API falha (401/403)
-- Verificar `API_BASE_URL` usado no build.
-- Verificar CORS no backend (precisa permitir `https://estafetas.ohmyfood.eu`).
+### 2) Upload + Extract no docroot correto
 
-### 5) HERE não funciona
-- Confirmar que `HERE_MAPS_API_KEY` foi passado via `--dart-define`.
-- Mesmo sem key, o app deve mostrar fallback (rota simples).
+No **cPanel → File Manager**, para cada domínio:
+
+- **estafeta.ohmyfood.eu**
+  - Upload do ZIP para: `/public_html/estafeta.ohmyfood.eu/`
+  - Usar **Extract** dentro dessa pasta
+
+- **restaurante.ohmyfood.eu**
+  - Upload do ZIP para: `/public_html/restaurante.ohmyfood.eu/`
+  - Usar **Extract** dentro dessa pasta
+
+- **ohmyfood.eu**
+  - Upload do ZIP para: `/public_html/ohmyfood.eu/`
+  - Usar **Extract** dentro dessa pasta
+
+Recomendação (evitar ficheiros antigos):
+
+- Apagar o conteúdo antigo (ou pelo menos `assets/`, `main.dart.js`, `flutter.js`, `index.html`) **antes** de extrair.
+
+### 3) Verificar SPA routing (.htaccess)
+
+Os ZIPs já incluem `.htaccess` com regras de SPA (redirect para `/index.html`).
+
+### 4) Teste rápido pós-deploy (auth)
+
+- Aceder direto: `/#/login` → deve abrir a tela de login (sem redirecionar para onboarding)
+- Aceder direto: `/#/dashboard` (janela anónima) → deve redirecionar para `/#/login`
+
+## Builds locais (opcional)
+
+Para gerar ZIPs localmente (sem GitHub):
+
+- `./deploy-all-flutter.sh` (gera ZIPs em `dist/deploy_<timestamp>/zips/`)
+
 
