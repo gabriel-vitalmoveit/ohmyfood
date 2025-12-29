@@ -12,10 +12,12 @@
  * Environment variables:
  * - GITHUB_REPO (required) e.g. "gabriel-vitalmoveit/ohmyfood"
  * - GITHUB_TOKEN (optional) GitHub token if repo is private
+ * - DEPLOY_TARGET (optional) "courier" | "restaurant" | "customer"
  * - RELEASE_TAG (optional) deploy a specific tag, e.g. "web-build-20251229-235959"
- * - ASSET_PREFIX (required) e.g. "estafeta.ohmyfood.eu" or "restaurante.ohmyfood.eu" or "ohmyfood.eu"
- * - DOCROOT (required) e.g. "/home/<cpanel_user>/public_html/estafeta.ohmyfood.eu"
+ * - ASSET_PREFIX (optional if DEPLOY_TARGET provided) e.g. "estafeta.ohmyfood.eu" / "restaurante.ohmyfood.eu" / "ohmyfood.eu"
+ * - DOCROOT (optional if running from public_html and DEPLOY_TARGET provided) e.g. "/home/<cpanel_user>/public_html/estafeta.ohmyfood.eu"
  * - KEEP_BACKUPS (optional) default 3
+ * - DEPLOY_ROOT (optional) directory for backups/workdir (recommended outside public_html)
  *
  * Usage example:
  *   GITHUB_REPO="gabriel-vitalmoveit/ohmyfood" \
@@ -125,15 +127,38 @@ function listDirsSortedByMtime(string $parent, string $prefix): array {
 
 $repo = envOrNull("GITHUB_REPO") ?? fail("Missing env: GITHUB_REPO");
 $token = envOrNull("GITHUB_TOKEN");
+$deployTarget = envOrNull("DEPLOY_TARGET"); // courier|restaurant|customer
 $tag = envOrNull("RELEASE_TAG"); // optional
-$assetPrefix = envOrNull("ASSET_PREFIX") ?? fail("Missing env: ASSET_PREFIX");
-$docroot = envOrNull("DOCROOT") ?? fail("Missing env: DOCROOT");
+$assetPrefix = envOrNull("ASSET_PREFIX");
+$docroot = envOrNull("DOCROOT");
 $keepBackups = intval(envOrNull("KEEP_BACKUPS") ?? "3");
 if ($keepBackups < 0) $keepBackups = 0;
 
 if (!class_exists("ZipArchive")) {
   fail("ZipArchive not available in PHP. Enable the zip extension in cPanel.");
 }
+
+$targetMap = [
+  "courier" => "estafeta.ohmyfood.eu",
+  "restaurant" => "restaurante.ohmyfood.eu",
+  "customer" => "ohmyfood.eu",
+];
+
+if ($deployTarget && isset($targetMap[$deployTarget])) {
+  $assetPrefix = $assetPrefix ?? $targetMap[$deployTarget];
+
+  // If DOCROOT not provided, infer it from current working directory.
+  // Intended cron usage: cd /home/<user>/public_html && php scripts/cpanel_deploy_from_release.php
+  if (!$docroot) {
+    $cwd = getcwd();
+    if ($cwd && basename($cwd) === "public_html") {
+      $docroot = rtrim($cwd, "/") . "/" . $assetPrefix;
+    }
+  }
+}
+
+if (!$assetPrefix) fail("Missing env: ASSET_PREFIX (or set DEPLOY_TARGET=courier|restaurant|customer)");
+if (!$docroot) fail("Missing env: DOCROOT (or run from public_html with DEPLOY_TARGET)");
 
 $apiBase = "https://api.github.com/repos/$repo";
 
@@ -176,12 +201,27 @@ if (!$asset) fail("No asset found for prefix '$assetPrefix' in release '$tagName
 $downloadUrl = $asset["browser_download_url"] ?? null;
 if (!$downloadUrl) fail("Missing browser_download_url for asset");
 
-$parent = dirname(rtrim($docroot, "/"));
 $stamp = gmdate("Ymd-His");
-$workDir = rtrim($parent, "/") . "/.deploy_work_" . $assetPrefix . "_" . $stamp;
+$deployRoot = envOrNull("DEPLOY_ROOT");
+if (!$deployRoot) {
+  // Prefer a directory outside public_html when possible.
+  // If DOCROOT is /home/<user>/public_html/<site>, store in /home/<user>/deploy/
+  $doc = rtrim($docroot, "/");
+  if (strpos($doc, "/public_html/") !== false) {
+    $home = dirname(dirname($doc)); // /home/<user>
+    $deployRoot = rtrim($home, "/") . "/deploy";
+  } else {
+    // fallback: sibling hidden folder
+    $deployRoot = dirname($doc) . "/.deploy";
+  }
+}
+
+ensureDir($deployRoot);
+
+$workDir = rtrim($deployRoot, "/") . "/work_" . $assetPrefix . "_" . $stamp;
 $newDir = $workDir . "/new";
 $zipPath = $workDir . "/asset.zip";
-$backupDir = rtrim($parent, "/") . "/.backup_" . $assetPrefix . "_" . $stamp;
+$backupDir = rtrim($deployRoot, "/") . "/backup_" . $assetPrefix . "_" . $stamp;
 
 ensureDir($workDir);
 ensureDir($newDir);
@@ -223,7 +263,7 @@ rrmdir($workDir);
 
 // Prune backups
 if ($keepBackups >= 0) {
-  $backups = listDirsSortedByMtime($parent, ".backup_" . $assetPrefix . "_");
+  $backups = listDirsSortedByMtime($deployRoot, "backup_" . $assetPrefix . "_");
   for ($i = $keepBackups; $i < count($backups); $i++) {
     rrmdir($backups[$i]);
   }

@@ -36,9 +36,9 @@ Ele baixa o ZIP do release `web-build-*` (ou um tag específico), extrai, faz sw
 2) Criar 3 tarefas CRON (uma por app), ex.:
 
 ```bash
-GITHUB_REPO="gabriel-vitalmoveit/ohmyfood" ASSET_PREFIX="estafeta.ohmyfood.eu" DOCROOT="/home/<user>/public_html/estafeta.ohmyfood.eu" php /home/<user>/deploy/cpanel_deploy_from_release.php
-GITHUB_REPO="gabriel-vitalmoveit/ohmyfood" ASSET_PREFIX="restaurante.ohmyfood.eu" DOCROOT="/home/<user>/public_html/restaurante.ohmyfood.eu" php /home/<user>/deploy/cpanel_deploy_from_release.php
-GITHUB_REPO="gabriel-vitalmoveit/ohmyfood" ASSET_PREFIX="ohmyfood.eu" DOCROOT="/home/<user>/public_html/ohmyfood.eu" php /home/<user>/deploy/cpanel_deploy_from_release.php
+cd /home/<user>/public_html && DEPLOY_TARGET=courier GITHUB_REPO="gabriel-vitalmoveit/ohmyfood" /usr/bin/php scripts/cpanel_deploy_from_release.php
+cd /home/<user>/public_html && DEPLOY_TARGET=restaurant GITHUB_REPO="gabriel-vitalmoveit/ohmyfood" /usr/bin/php scripts/cpanel_deploy_from_release.php
+cd /home/<user>/public_html && DEPLOY_TARGET=customer GITHUB_REPO="gabriel-vitalmoveit/ohmyfood" /usr/bin/php scripts/cpanel_deploy_from_release.php
 ```
 
 Se o repo for privado, adicionar `GITHUB_TOKEN="..."` (guardar esse token no servidor, não no repo).
