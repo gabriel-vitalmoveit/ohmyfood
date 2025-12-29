@@ -81,7 +81,7 @@ jobs:
         working-directory: ${{ matrix.app.path }}
         env:
           BUILD_ENV: ${{ secrets.ENV || 'prod' }}
-          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          API_BASE_URL: ${{ secrets.API_BASE_URL || secrets.COURIER_API_BASE_URL }}
           HERE_MAPS_API_KEY: ${{ secrets.HERE_MAPS_API_KEY || '' }}
           NEEDS_HERE: ${{ matrix.app.needs_here }}
         shell: bash
@@ -157,15 +157,27 @@ jobs:
           path: dist/zips/*.zip
           if-no-files-found: error
 
+      - name: Mark workspace as safe for git
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Deploy to cPanel via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          port: ${{ secrets.FTP_PORT || 21 }}
+          # Accept either the new names (FTP_*) or the previous names (CPANEL_FTP_*).
+          server: ${{ secrets.FTP_SERVER || secrets.CPANEL_FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME || secrets.CPANEL_FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD || secrets.CPANEL_FTP_PASSWORD }}
+          port: ${{ secrets.FTP_PORT || secrets.CPANEL_FTP_PORT || 21 }}
           local-dir: ${{ matrix.app.path }}/build/web/
-          server-dir: ${{ matrix.app.dest }}
+          # Optional per-app override: FTP_SERVER_DIR (courier legacy), or FTP_<APP>_DIR.
+          server-dir: >-
+            ${{ (matrix.app.name == 'courier' && (secrets.FTP_COURIER_DIR || secrets.FTP_SERVER_DIR)) ||
+                (matrix.app.name == 'restaurant' && secrets.FTP_RESTAURANT_DIR) ||
+                (matrix.app.name == 'customer' && secrets.FTP_CUSTOMER_DIR) ||
+                matrix.app.dest }}
           # Incremental deploy (default). Avoids re-uploading unchanged files.
           dangerous-clean-slate: false
 
