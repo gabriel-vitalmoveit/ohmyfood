@@ -1,0 +1,62 @@
+name: Deploy Courier App (cPanel)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/courier_app/**"
+      - "deploy-courier.sh"
+      - ".github/workflows/deploy-courier.yml"
+
+concurrency:
+  group: deploy-courier-main
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter pub get
+        working-directory: apps/courier_app
+        run: flutter pub get
+
+      - name: Build Flutter web (release)
+        working-directory: apps/courier_app
+        env:
+          ENV: prod
+          API_BASE_URL: ${{ secrets.COURIER_API_BASE_URL }}
+          HERE_MAPS_API_KEY: ${{ secrets.HERE_MAPS_API_KEY }}
+        run: |
+          flutter build web --release \
+            --dart-define=ENV=$ENV \
+            --dart-define=API_BASE_URL=$API_BASE_URL \
+            --dart-define=HERE_MAPS_API_KEY=$HERE_MAPS_API_KEY
+
+      # Deploy via FTP to cPanel.
+      # Requer segredos:
+      # - CPANEL_FTP_SERVER
+      # - CPANEL_FTP_USERNAME
+      # - CPANEL_FTP_PASSWORD
+      # - CPANEL_FTP_PORT (opcional; default 21)
+      # - CPANEL_FTP_SERVER_DIR (ex.: /public_html/estafetas.ohmyfood.eu/)
+      - name: Deploy to cPanel via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.CPANEL_FTP_SERVER }}
+          username: ${{ secrets.CPANEL_FTP_USERNAME }}
+          password: ${{ secrets.CPANEL_FTP_PASSWORD }}
+          port: ${{ secrets.CPANEL_FTP_PORT || 21 }}
+          local-dir: apps/courier_app/build/web/
+          server-dir: ${{ secrets.CPANEL_FTP_SERVER_DIR }}
+          dangerous-clean-slate: true
+
