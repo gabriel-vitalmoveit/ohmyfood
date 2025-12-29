@@ -164,6 +164,8 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Deploy to cPanel via FTP
+        if: ${{ (secrets.FTP_SERVER || secrets.CPANEL_FTP_SERVER) && (secrets.FTP_USERNAME || secrets.CPANEL_FTP_USERNAME) && (secrets.FTP_PASSWORD || secrets.CPANEL_FTP_PASSWORD) }}
+        continue-on-error: true
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           # Accept either the new names (FTP_*) or the previous names (CPANEL_FTP_*).
@@ -216,4 +218,19 @@ jobs:
           set -euo pipefail
           url="https://github.com/$REPO/releases/tag/$TAG"
           gh api "repos/$REPO/commits/$SHA/comments" -f body="✅ Web build disponível: $url"
+
+      - name: Trigger cPanel deploy webhook (optional)
+        if: ${{ secrets.CPANEL_DEPLOY_WEBHOOK_URL != '' && secrets.CPANEL_DEPLOY_WEBHOOK_TOKEN != '' }}
+        env:
+          WEBHOOK_URL: ${{ secrets.CPANEL_DEPLOY_WEBHOOK_URL }}
+          WEBHOOK_TOKEN: ${{ secrets.CPANEL_DEPLOY_WEBHOOK_TOKEN }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -X POST \
+            -H "X-Deploy-Token: $WEBHOOK_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data "{\"tag\":\"$TAG\"}" \
+            "$WEBHOOK_URL"
 
