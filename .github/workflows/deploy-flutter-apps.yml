@@ -1,0 +1,116 @@
+name: Deploy Flutter Web Apps (cPanel via FTP)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/courier_app/**"
+      - "apps/restaurant_app/**"
+      - "apps/customer_app/**"
+      - "packages/**"
+      - "scripts/bootstrap_flutter.sh"
+      - ".github/workflows/deploy-flutter-apps.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-flutter-apps-main
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - name: courier
+            path: apps/courier_app
+            dest: /public_html/estafeta.ohmyfood.eu/
+            needs_here: true
+          - name: restaurant
+            path: apps/restaurant_app
+            dest: /public_html/restaurante.ohmyfood.eu/
+            needs_here: false
+          - name: customer
+            path: apps/customer_app
+            dest: /public_html/ohmyfood.eu/
+            needs_here: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: "3.24.0"
+          cache: true
+
+      - name: Dependencies (app)
+        working-directory: ${{ matrix.app.path }}
+        run: flutter pub get
+
+      - name: Build web (release)
+        working-directory: ${{ matrix.app.path }}
+        env:
+          BUILD_ENV: ${{ secrets.ENV || 'prod' }}
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          HERE_MAPS_API_KEY: ${{ secrets.HERE_MAPS_API_KEY || '' }}
+          NEEDS_HERE: ${{ matrix.app.needs_here }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$API_BASE_URL" ]]; then
+            echo "Missing secret: API_BASE_URL" >&2
+            exit 1
+          fi
+
+          if [[ "$NEEDS_HERE" == "true" && -z "$HERE_MAPS_API_KEY" ]]; then
+            echo "WARN: HERE_MAPS_API_KEY empty; courier app will run with fallback." >&2
+          fi
+
+          flutter build web --release \
+            --dart-define=ENV="$BUILD_ENV" \
+            --dart-define=API_BASE_URL="$API_BASE_URL" \
+            --dart-define=HERE_MAPS_API_KEY="$HERE_MAPS_API_KEY"
+
+      - name: Ensure .htaccess (SPA routing)
+        shell: bash
+        run: |
+          set -euo pipefail
+          target="${{ matrix.app.path }}/build/web/.htaccess"
+          cat > "$target" <<'EOF'
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>
+
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/jpg "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/gif "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+</IfModule>
+EOF
+
+      - name: Deploy to cPanel via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          port: ${{ secrets.FTP_PORT || 21 }}
+          local-dir: ${{ matrix.app.path }}/build/web/
+          server-dir: ${{ matrix.app.dest }}
+          # Incremental deploy (default). Avoids re-uploading unchanged files.
+          dangerous-clean-slate: false
+

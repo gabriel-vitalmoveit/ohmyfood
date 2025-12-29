@@ -1,12 +1,10 @@
-# DEPLOYMENT (cPanel) — Builds automáticos (GitHub Releases) + deploy manual
+# DEPLOYMENT (cPanel) — Deploy automático (GitHub Actions) + fallback manual
 
 ## Objetivo
 
-Como **FTP (porta 21)** está bloqueado no runner, o fluxo oficial passa a ser:
+Ter **deploy automático** para cPanel sempre que houver push para `main`, sem necessidade de builds manuais.
 
-- **GitHub Actions** faz **rebuild automático** dos Flutter Web apps
-- publica os **ZIPs num GitHub Release**
-- o deploy é feito **manualmente via cPanel File Manager** (upload + extract)
+Se o deploy automático via FTP falhar (rede/firewall), existe um **fallback** via GitHub Releases (ZIPs) para upload manual no cPanel.
 
 Apps cobertas:
 
@@ -14,11 +12,11 @@ Apps cobertas:
 - **restaurante**: `apps/restaurant_app` → `restaurante.ohmyfood.eu`
 - **cliente**: `apps/customer_app` → `ohmyfood.eu`
 
-## GitHub Actions (rebuild automático)
+## GitHub Actions (deploy automático via cPanel FTP)
 
 Workflow:
 
-- `/.github/workflows/deploy-apps.yml`
+- `/.github/workflows/deploy-flutter-apps.yml`
 
 ### Quando dispara
 
@@ -31,22 +29,32 @@ Em `push` para `main` quando muda algo em:
 
 ### O que ele faz
 
-- Faz `flutter build web --release` (as **3 apps**) com `--dart-define`
-- Empacota `build/web` + `.htaccess` (SPA routing) em ZIP
-- Cria um **GitHub Release** com tag: `web-build-YYYYMMDD-HHMMSS`
-- Anexa os ZIPs como assets do release e comenta no commit com o link
+- Faz `flutter build web --release` (matrix: **courier/restaurant/customer**) com `--dart-define`
+- Garante `.htaccess` no `build/web` (SPA routing)
+- Faz deploy para o docroot do cPanel via **SamKirkland/FTP-Deploy-Action**
 
 ### Secrets necessários (GitHub)
 
 Configurar em **GitHub → Settings → Secrets and variables → Actions → Secrets**:
 
-- `API_BASE_URL`: `https://api.ohmyfood.eu`
-- `ENV`: `prod`
-- `HERE_MAPS_API_KEY`: (opcional; recomendado para `courier_app`)
+- **FTP (cPanel)**
+  - `FTP_SERVER`: `ftp.ohmyfood.com`
+  - `FTP_USERNAME`: (o user de deploy)
+  - `FTP_PASSWORD`: (a password de deploy)
+  - `FTP_PORT`: `21` (opcional; default 21)
+
+- **Build (Flutter)**
+  - `API_BASE_URL`: `https://api.ohmyfood.eu`
+  - `ENV`: `prod`
+  - `HERE_MAPS_API_KEY`: (opcional; recomendado para `courier_app`)
 
 > Nota: se `HERE_MAPS_API_KEY` estiver vazio, o courier usa fallback.
 
-## Deploy manual via cPanel File Manager (sem FTP)
+## Deploy manual via cPanel File Manager (fallback)
+
+Se o runner não conseguir ligar ao FTP (rede/firewall), usar o workflow de releases como alternativa:
+
+- `/.github/workflows/deploy-apps.yml` (gera ZIPs + GitHub Release) — executar manualmente via `workflow_dispatch`
 
 ### 1) Baixar o ZIP do Release
 

@@ -1,16 +1,7 @@
 name: Rebuild Flutter Web Apps (Release ZIPs)
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "apps/courier_app/**"
-      - "apps/restaurant_app/**"
-      - "apps/customer_app/**"
-      - "packages/**"
-      - "melos.yaml"
-      - "scripts/bootstrap_flutter.sh"
-      - ".github/workflows/deploy-apps.yml"
+  workflow_dispatch: {}
 
 concurrency:
   group: web-build-main
