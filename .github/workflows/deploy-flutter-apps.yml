@@ -17,7 +17,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      stamp: ${{ steps.meta.outputs.stamp }}
+    steps:
+      - name: Compute tag + timestamp
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          STAMP="$(date -u +%Y%m%d-%H%M%S)"
+          echo "stamp=$STAMP" >> "$GITHUB_OUTPUT"
+          echo "tag=web-build-$STAMP" >> "$GITHUB_OUTPUT"
+
   build-and-deploy:
+    needs: prepare
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -26,14 +42,17 @@ jobs:
           - name: courier
             path: apps/courier_app
             dest: /public_html/estafeta.ohmyfood.eu/
+            zip_prefix: estafeta.ohmyfood.eu
             needs_here: true
           - name: restaurant
             path: apps/restaurant_app
             dest: /public_html/restaurante.ohmyfood.eu/
+            zip_prefix: restaurante.ohmyfood.eu
             needs_here: false
           - name: customer
             path: apps/customer_app
             dest: /public_html/ohmyfood.eu/
+            zip_prefix: ohmyfood.eu
             needs_here: false
 
     steps:
@@ -46,6 +65,13 @@ jobs:
           channel: stable
           flutter-version: "3.24.0"
           cache: true
+
+      - name: Dependencies (shared packages)
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd packages/design_system && flutter pub get)
+          (cd packages/shared_models && flutter pub get)
 
       - name: Dependencies (app)
         working-directory: ${{ matrix.app.path }}
@@ -102,6 +128,30 @@ jobs:
 </IfModule>
 EOF
 
+      - name: Zip build output (with .htaccess)
+        env:
+          STAMP: ${{ needs.prepare.outputs.stamp }}
+          ZIP_PREFIX: ${{ matrix.app.zip_prefix }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUILD_DIR="${{ matrix.app.path }}/build/web"
+          if [[ ! -d "$BUILD_DIR" ]]; then
+            echo "Missing build output directory: $BUILD_DIR" >&2
+            exit 1
+          fi
+          mkdir -p dist/zips
+          ZIP_PATH="dist/zips/${ZIP_PREFIX}_web_${STAMP}.zip"
+          (cd "$BUILD_DIR" && zip -r "../../../$ZIP_PATH" . >/dev/null)
+          echo "Built ZIP: $ZIP_PATH"
+
+      - name: Upload ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app.name }}-web-zip-${{ needs.prepare.outputs.tag }}
+          path: dist/zips/*.zip
+          if-no-files-found: error
+
       - name: Deploy to cPanel via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
@@ -113,4 +163,40 @@ EOF
           server-dir: ${{ matrix.app.dest }}
           # Incremental deploy (default). Avoids re-uploading unchanged files.
           dangerous-clean-slate: false
+
+  release:
+    needs: [prepare, build-and-deploy]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all ZIP artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/release-assets
+          pattern: "*-web-zip-${{ needs.prepare.outputs.tag }}"
+          merge-multiple: true
+
+      - name: Create GitHub Release + upload ZIPs
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: Web build ${{ needs.prepare.outputs.tag }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            dist/release-assets/**/*.zip
+
+      - name: Comment on commit with Release link
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://github.com/$REPO/releases/tag/$TAG"
+          gh api "repos/$REPO/commits/$SHA/comments" -f body="✅ Web build disponível: $url"
 

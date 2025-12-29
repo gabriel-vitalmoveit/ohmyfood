@@ -32,6 +32,8 @@ Em `push` para `main` quando muda algo em:
 - Faz `flutter build web --release` (matrix: **courier/restaurant/customer**) com `--dart-define`
 - Garante `.htaccess` no `build/web` (SPA routing)
 - Faz deploy para o docroot do cPanel via **SamKirkland/FTP-Deploy-Action**
+- Gera **3 ZIPs** (cada um já com `.htaccess`) e cria um **GitHub Release** com tag `web-build-YYYYMMDD-HHMMSS`
+- Comenta no commit com o link do Release
 
 ### Secrets necessários (GitHub)
 
