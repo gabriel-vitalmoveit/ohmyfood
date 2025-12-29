@@ -200,6 +200,20 @@ class LoginScreen extends HookConsumerWidget {
                 ),
               ),
               const SizedBox(height: OhMyFoodSpacing.md),
+
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Recuperação de palavra-passe em breve. Contacte suporte@ohmyfood.eu.'),
+                      ),
+                    );
+                  },
+                  child: const Text('Esqueceu a senha?'),
+                ),
+              ),
               
               if (authState.hasError && authState.errorMessage != null)
                 Container(
