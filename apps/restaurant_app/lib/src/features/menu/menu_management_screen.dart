@@ -20,10 +20,9 @@ class MenuManagementScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final restaurantId = ref.watch(restaurantIdProvider);
-    final menuAsync = restaurantId != null
-        ? ref.watch(menuItemsProvider(restaurantId))
-        : const AsyncValue.loading();
+    // TODO: substituir por restaurantId vindo do auth (/auth/me)
+    const restaurantId = '1';
+    final menuAsync = ref.watch(menuItemsProvider(restaurantId));
 
     return OhMyFoodAppScaffold(
       title: 'Gestão de menu',
@@ -58,9 +57,7 @@ class MenuManagementScreen extends HookConsumerWidget {
 
           return RefreshIndicator(
             onRefresh: () async {
-              if (restaurantId != null) {
-                ref.invalidate(menuItemsProvider(restaurantId));
-              }
+              ref.invalidate(menuItemsProvider(restaurantId));
             },
             child: ListView.builder(
               padding: const EdgeInsets.only(top: OhMyFoodSpacing.lg),
@@ -143,9 +140,7 @@ class MenuManagementScreen extends HookConsumerWidget {
               const SizedBox(height: OhMyFoodSpacing.lg),
               ElevatedButton(
                 onPressed: () {
-                  if (restaurantId != null) {
-                    ref.invalidate(menuItemsProvider(restaurantId));
-                  }
+                  ref.invalidate(menuItemsProvider(restaurantId));
                 },
                 child: const Text('Tentar novamente'),
               ),
@@ -156,8 +151,7 @@ class MenuManagementScreen extends HookConsumerWidget {
     );
   }
 
-  void _showAddItemDialog(BuildContext context, WidgetRef ref, String? restaurantId) {
-    if (restaurantId == null) return;
+  void _showAddItemDialog(BuildContext context, WidgetRef ref, String restaurantId) {
     showDialog(
       context: context,
       builder: (context) => MenuItemDialog(
@@ -169,8 +163,7 @@ class MenuManagementScreen extends HookConsumerWidget {
     );
   }
 
-  void _showEditItemDialog(BuildContext context, WidgetRef ref, String? restaurantId, Map<String, dynamic> item) {
-    if (restaurantId == null) return;
+  void _showEditItemDialog(BuildContext context, WidgetRef ref, String restaurantId, Map<String, dynamic> item) {
     showDialog(
       context: context,
       builder: (context) => MenuItemDialog(
@@ -186,12 +179,10 @@ class MenuManagementScreen extends HookConsumerWidget {
   Future<void> _toggleAvailability(
     BuildContext context,
     WidgetRef ref,
-    String? restaurantId,
+    String restaurantId,
     String itemId,
     bool available,
   ) async {
-    if (restaurantId == null) return;
-
     try {
       final apiClient = ref.read(restaurantApiClientProvider);
       await apiClient.updateMenuItem(restaurantId, itemId, {'available': available});
@@ -220,11 +211,9 @@ class MenuManagementScreen extends HookConsumerWidget {
   void _showDeleteConfirmation(
     BuildContext context,
     WidgetRef ref,
-    String? restaurantId,
+    String restaurantId,
     Map<String, dynamic> item,
   ) {
-    if (restaurantId == null) return;
-
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

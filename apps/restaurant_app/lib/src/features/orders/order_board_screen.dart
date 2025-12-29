@@ -12,7 +12,7 @@ final restaurantOrdersStreamProvider = StreamProvider.family<List<Map<String, dy
   // Polling a cada 10 segundos para atualização em tempo real
   while (true) {
     try {
-      final orders = await apiClient.getOrders(restaurantId);
+      final orders = await apiClient.getOrders(restaurantId: restaurantId);
       yield (orders as List).map((o) => o as Map<String, dynamic>).toList();
       await Future.delayed(const Duration(seconds: 10));
     } catch (e) {
