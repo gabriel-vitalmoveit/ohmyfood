@@ -140,10 +140,15 @@ jobs:
             echo "Missing build output directory: $BUILD_DIR" >&2
             exit 1
           fi
-          mkdir -p dist/zips
-          ZIP_PATH="dist/zips/${ZIP_PREFIX}_web_${STAMP}.zip"
-          (cd "$BUILD_DIR" && zip -r "../../../$ZIP_PATH" . >/dev/null)
+          ZIP_DIR="${GITHUB_WORKSPACE}/dist/zips"
+          mkdir -p "$ZIP_DIR"
+          ZIP_PATH="${ZIP_DIR}/${ZIP_PREFIX}_web_${STAMP}.zip"
+
+          # Use absolute output path to avoid relative-path issues from build/web.
+          (cd "$BUILD_DIR" && zip -r "$ZIP_PATH" .)
+
           echo "Built ZIP: $ZIP_PATH"
+          ls -lh "$ZIP_PATH"
 
       - name: Upload ZIP artifact
         uses: actions/upload-artifact@v4
