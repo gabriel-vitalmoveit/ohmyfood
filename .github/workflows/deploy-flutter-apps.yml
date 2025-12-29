@@ -168,6 +168,9 @@ jobs:
         continue-on-error: true
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
+          # GoDaddy cPanel typically requires explicit FTPS on port 21.
+          # Override with secret FTP_PROTOCOL if needed: ftp | ftps | ftps-legacy
+          protocol: ${{ secrets.FTP_PROTOCOL || 'ftps' }}
           # Accept either the new names (FTP_*) or the previous names (CPANEL_FTP_*).
           server: ${{ secrets.FTP_SERVER || secrets.CPANEL_FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME || secrets.CPANEL_FTP_USERNAME }}
