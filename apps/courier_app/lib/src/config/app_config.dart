@@ -22,7 +22,8 @@ class AppConfig {
     
     const String env = String.fromEnvironment('ENV', defaultValue: 'dev');
     if (env == 'prod' || env == 'production') {
-      // URL do Railway em produção
+      // Produção: pode ser sobrescrito por `API_BASE_URL`, senão usa Railway.
+      // Nota: se estiverem a usar `api.ohmyfood.eu`, passar `--dart-define=API_BASE_URL=https://api.ohmyfood.eu`
       return 'https://ohmyfood-production-800c.up.railway.app/api';
     }
     
@@ -41,7 +42,8 @@ class AppConfig {
     return '$cleanUrl/api';
   }
   
-  static const String productionWebUrl = 'https://estafeta.ohmyfood.eu';
+  // Subdomínio de produção (estafetas)
+  static const String productionWebUrl = 'https://estafetas.ohmyfood.eu';
   static const String developmentWebUrl = 'http://localhost:8083';
   
   static bool get isProduction {
@@ -64,8 +66,8 @@ class AppConfig {
       return envKey;
     }
     
-    // API Key de produção
-    return 't8Ikr294r1USEjAoZGOnv1ZTb2y96ILFIO4td5aCKaU';
+    // Não commitar key no código. Se não for fornecida, o app usa fallback (rota simples).
+    return '';
   }
 }
 

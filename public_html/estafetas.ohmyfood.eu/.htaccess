@@ -2,7 +2,7 @@
   RewriteEngine On
   # Subdomínio -> docroot próprio: usar /
   RewriteBase /
-  
+
   # SPA Routing - redirecionar todas as rotas para index.html
   RewriteRule ^index\.html$ - [L]
   RewriteCond %{REQUEST_FILENAME} !-f
