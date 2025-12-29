@@ -49,7 +49,8 @@ class CourierOnboardingScreen extends HookConsumerWidget {
                 child: ElevatedButton(
                   onPressed: () {
                     ref.read(courierOnboardingProvider.notifier).state = true;
-                    context.go('/dashboard');
+                    // Onboarding concluído -> seguir para login (dashboard só após autenticação)
+                    context.go('/login');
                   },
                   child: const Text('Entrar em serviço'),
                 ),

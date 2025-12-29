@@ -74,35 +74,31 @@ final courierRouterProvider = Provider<GoRouter>((ref) {
       final isOnboarding = state.matchedLocation == '/onboarding';
       final isAccessDenied = state.matchedLocation == '/access-denied';
       
-      // Se não está autenticado e não está em login/onboarding/access-denied, redirecionar para login
+      // 1) Onboarding primeiro (mas nunca bloquear a rota /login)
+      if (!completed && !isOnboarding && !isLogin && !isAccessDenied) {
+        return '/onboarding';
+      }
+
+      // Se completou onboarding mas está na tela de onboarding
+      if (completed && isOnboarding) {
+        return authState.isAuthenticated ? '/dashboard' : '/login';
+      }
+
+      // 2) Auth obrigatório para todas as rotas protegidas
       if (!authState.isAuthenticated && !isLogin && !isOnboarding && !isAccessDenied) {
         return '/login';
       }
-      
-      // Se está autenticado, verificar role
+
+      // 3) Se está autenticado, verificar role
       if (authState.isAuthenticated) {
-        // Se role não é COURIER, mostrar acesso negado
         if (authState.userRole != 'COURIER') {
-          if (!isAccessDenied) {
-            return '/access-denied';
-          }
-          return null;
+          return isAccessDenied ? null : '/access-denied';
         }
-        
+
         // Role correta: se está em login/access-denied, redirecionar para dashboard
         if (isLogin || isAccessDenied) {
           return '/dashboard';
         }
-      }
-      
-      // Se não completou onboarding e não está em onboarding/login/access-denied
-      if (!completed && !isOnboarding && !isLogin && !isAccessDenied) {
-        return '/onboarding';
-      }
-      
-      // Se completou onboarding mas está na tela de onboarding
-      if (completed && isOnboarding) {
-        return authState.isAuthenticated ? '/dashboard' : '/login';
       }
       
       return null;
@@ -111,8 +107,9 @@ final courierRouterProvider = Provider<GoRouter>((ref) {
 });
 
 String _getInitialLocation(bool onboardingCompleted, bool isAuthenticated) {
-  if (!isAuthenticated) return '/login';
+  // Mostrar onboarding primeiro; depois login; depois dashboard.
   if (!onboardingCompleted) return '/onboarding';
+  if (!isAuthenticated) return '/login';
   return '/dashboard';
 }
 

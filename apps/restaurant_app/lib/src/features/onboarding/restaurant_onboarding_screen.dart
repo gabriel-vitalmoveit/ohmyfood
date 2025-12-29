@@ -90,7 +90,8 @@ class RestaurantOnboardingScreen extends HookConsumerWidget {
                         } else {
                           // Finalizar onboarding
                           ref.read(restaurantOnboardingProvider.notifier).state = true;
-                          context.go('/dashboard');
+                          // Onboarding concluído -> seguir para login (dashboard só após autenticação)
+                          context.go('/login');
                         }
                       },
                       child: Text(currentStep < totalSteps - 1 ? 'Próximo' : 'Finalizar'),
