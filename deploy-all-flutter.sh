@@ -14,11 +14,11 @@
 #
 # Vars obrigatórias:
 #   API_BASE_URL=https://api.ohmyfood.eu
-#   HERE_MAPS_API_KEY=...
 #
 # Vars opcionais:
 #   ENV=prod
 #   FLUTTER_BIN=flutter
+#   HERE_MAPS_API_KEY=...   (courier usa; vazio -> fallback)
 #
 # FTP (obrigatórias para upload):
 #   FTP_SERVER=ftp.ohmyfood.com
@@ -26,11 +26,11 @@
 #   FTP_PASS=...
 #   FTP_PORT=21
 #
-# Pastas remotas (defaults):
+# Pastas remotas (defaults) — docroots típicos de cPanel Subdomains:
 #   REMOTE_ROOT=/public_html
 #   REMOTE_CUSTOMER_DIR=$REMOTE_ROOT
-#   REMOTE_RESTAURANT_DIR=$REMOTE_ROOT/restaurante
-#   REMOTE_COURIER_DIR=$REMOTE_ROOT/estafeta
+#   REMOTE_RESTAURANT_DIR=$REMOTE_ROOT/restaurante.ohmyfood.eu
+#   REMOTE_COURIER_DIR=$REMOTE_ROOT/estafeta.ohmyfood.eu
 #
 
 set -euo pipefail
@@ -47,8 +47,7 @@ if [[ -z "$API_BASE_URL" ]]; then
 fi
 
 if [[ -z "$HERE_MAPS_API_KEY" ]]; then
-  echo "ERROR: HERE_MAPS_API_KEY is required" >&2
-  exit 1
+  echo "WARN: HERE_MAPS_API_KEY não definido; courier app usará fallback de rota simples." >&2
 fi
 
 FLUTTER_BIN="${FLUTTER_BIN:-flutter}"
@@ -74,8 +73,8 @@ FTP_PORT="${FTP_PORT:-21}"
 
 REMOTE_ROOT="${REMOTE_ROOT:-/public_html}"
 REMOTE_CUSTOMER_DIR="${REMOTE_CUSTOMER_DIR:-$REMOTE_ROOT}"
-REMOTE_RESTAURANT_DIR="${REMOTE_RESTAURANT_DIR:-$REMOTE_ROOT/restaurante}"
-REMOTE_COURIER_DIR="${REMOTE_COURIER_DIR:-$REMOTE_ROOT/estafeta}"
+REMOTE_RESTAURANT_DIR="${REMOTE_RESTAURANT_DIR:-$REMOTE_ROOT/restaurante.ohmyfood.eu}"
+REMOTE_COURIER_DIR="${REMOTE_COURIER_DIR:-$REMOTE_ROOT/estafeta.ohmyfood.eu}"
 
 STAMP="$(date +%Y%m%d_%H%M%S)"
 OUT_BASE="$ROOT_DIR/dist/deploy_$STAMP"
