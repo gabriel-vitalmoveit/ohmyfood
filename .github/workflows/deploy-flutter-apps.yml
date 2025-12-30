@@ -9,11 +9,6 @@ concurrency:
   group: deploy-flutter-apps-main
   cancel-in-progress: true
 
-env:
-  # Do not reference `secrets.*` directly in `if:` expressions (workflow validation).
-  # Instead map secrets to env and use `env.*` in conditions.
-  ENABLE_RELEASE_ZIPS: ${{ secrets.ENABLE_RELEASE_ZIPS || '' }}
-
 jobs:
   prepare:
     runs-on: ubuntu-latest
@@ -50,9 +45,6 @@ jobs:
       # Disable FTP by default (shared hosting often blocks port 21).
       # Enable explicitly by setting secret ENABLE_FTP_DEPLOY=true.
       ENABLE_FTP_DEPLOY: ${{ secrets.ENABLE_FTP_DEPLOY || '' }}
-      # Disable ZIP artifacts + GitHub Release by default.
-      # Enable explicitly by setting secret ENABLE_RELEASE_ZIPS=true.
-      ENABLE_RELEASE_ZIPS: ${{ env.ENABLE_RELEASE_ZIPS }}
       # Deploy built static assets by pushing to a branch that cPanel can `git pull`.
       # On cPanel, clone/pull this branch into /home/<user>/public_html so folders match docroots.
       CPANEL_DEPLOY_BRANCH: cpanel-web
@@ -176,37 +168,6 @@ jobs:
           set -euo pipefail
           out="${{ matrix.app.path }}/build/web/deploy_marker.txt"
           printf "app=%s\nsha=%s\ntimestamp=%s\n" "$APP_NAME" "$SHA" "$STAMP" > "$out"
-
-      - name: Zip build output (with .htaccess)
-        if: ${{ env.ENABLE_RELEASE_ZIPS == 'true' }}
-        env:
-          STAMP: ${{ needs.prepare.outputs.stamp }}
-          ZIP_PREFIX: ${{ matrix.app.zip_prefix }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          BUILD_DIR="${{ matrix.app.path }}/build/web"
-          if [[ ! -d "$BUILD_DIR" ]]; then
-            echo "Missing build output directory: $BUILD_DIR" >&2
-            exit 1
-          fi
-          ZIP_DIR="${GITHUB_WORKSPACE}/dist/zips"
-          mkdir -p "$ZIP_DIR"
-          ZIP_PATH="${ZIP_DIR}/${ZIP_PREFIX}_web_${STAMP}.zip"
-
-          # Use absolute output path to avoid relative-path issues from build/web.
-          (cd "$BUILD_DIR" && zip -r "$ZIP_PATH" .)
-
-          echo "Built ZIP: $ZIP_PATH"
-          ls -lh "$ZIP_PATH"
-
-      - name: Upload ZIP artifact
-        if: ${{ env.ENABLE_RELEASE_ZIPS == 'true' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.app.name }}-web-zip-${{ needs.prepare.outputs.tag }}
-          path: dist/zips/*.zip
-          if-no-files-found: error
 
       - name: Stage build output for cPanel deploy branch
         id: stage_build
@@ -354,61 +315,4 @@ jobs:
         shell: bash
         run: |
           echo "FTP deploy is disabled (ENABLE_FTP_DEPLOY != 'true')."
-          echo "This workflow will publish GitHub Release ZIPs."
-          echo "Deploy on cPanel using scripts/cpanel_deploy_from_release.php (manual or cron/webhook)."
-
-  release:
-    needs: [prepare, build-and-deploy]
-    runs-on: ubuntu-latest
-    if: ${{ env.ENABLE_RELEASE_ZIPS == 'true' }}
-    permissions:
-      contents: write
-    env:
-      CPANEL_DEPLOY_WEBHOOK_URL: ${{ secrets.CPANEL_DEPLOY_WEBHOOK_URL || '' }}
-      CPANEL_DEPLOY_WEBHOOK_TOKEN: ${{ secrets.CPANEL_DEPLOY_WEBHOOK_TOKEN || '' }}
-    steps:
-      - name: Download all ZIP artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: dist/release-assets
-          pattern: "*-web-zip-${{ needs.prepare.outputs.tag }}"
-          merge-multiple: true
-
-      - name: Create GitHub Release + upload ZIPs
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ needs.prepare.outputs.tag }}
-          name: Web build ${{ needs.prepare.outputs.tag }}
-          draft: false
-          prerelease: false
-          generate_release_notes: true
-          files: |
-            dist/release-assets/**/*.zip
-
-      - name: Comment on commit with Release link
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ needs.prepare.outputs.tag }}
-          SHA: ${{ github.sha }}
-          REPO: ${{ github.repository }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          url="https://github.com/$REPO/releases/tag/$TAG"
-          gh api "repos/$REPO/commits/$SHA/comments" -f body="✅ Web build disponível: $url"
-
-      - name: Trigger cPanel deploy webhook (optional)
-        if: ${{ env.CPANEL_DEPLOY_WEBHOOK_URL != '' && env.CPANEL_DEPLOY_WEBHOOK_TOKEN != '' }}
-        env:
-          WEBHOOK_URL: ${{ env.CPANEL_DEPLOY_WEBHOOK_URL }}
-          WEBHOOK_TOKEN: ${{ env.CPANEL_DEPLOY_WEBHOOK_TOKEN }}
-          TAG: ${{ needs.prepare.outputs.tag }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -fsS -X POST \
-            -H "X-Deploy-Token: $WEBHOOK_TOKEN" \
-            -H "Content-Type: application/json" \
-            --data "{\"tag\":\"$TAG\"}" \
-            "$WEBHOOK_URL"
 
