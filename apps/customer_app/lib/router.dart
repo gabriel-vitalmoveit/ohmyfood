@@ -131,24 +131,24 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isOnboarding = state.matchedLocation == '/onboarding';
       final isLanding = state.matchedLocation == '/';
       
-      // Se está autenticado e tenta acessar landing/login/register, redireciona para home
-      if (isAuth && (isLanding || isAuthRoute)) {
+      // Se está autenticado e tenta acessar landing/login/register/onboarding, redireciona para home
+      if (isAuth && (isLanding || isAuthRoute || isOnboarding)) {
         return '/home';
       }
       
-      // Se não completou onboarding e não está na tela de onboarding/landing/auth
-      if (!onboardingCompleted && !isOnboarding && !isAuthRoute && !isLanding) {
-        return '/onboarding';
+      // Root (/) deve ir direto para login para usuários não autenticados
+      if (!isAuth && isLanding) {
+        return '/login';
       }
       
-      // Se completou onboarding mas está na tela de onboarding
+      // Se completou onboarding mas ainda está na tela de onboarding, segue para login/home
       if (onboardingCompleted && isOnboarding) {
-        return isAuth ? '/home' : '/';
+        return isAuth ? '/home' : '/login';
       }
       
       // Se não está autenticado e tenta acessar rotas protegidas
       if (!isAuth && !isAuthRoute && !isOnboarding && !isLanding) {
-        return '/';
+        return '/login';
       }
       
       return null;
@@ -158,8 +158,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
 String _getInitialLocation(bool onboardingCompleted, bool isAuthenticated) {
   if (isAuthenticated) return '/home';
-  if (!onboardingCompleted) return '/onboarding';
-  return '/'; // Landing page
+  return '/login';
 }
 
 class _RouterRefresh extends ChangeNotifier {
