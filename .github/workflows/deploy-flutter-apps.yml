@@ -65,7 +65,9 @@ jobs:
             needs_here: false
           - name: admin
             path: apps/admin_panel
-            dest: /public_html/admin.ohmyfood.eu/
+            # Default to a folder that exists on most cPanel setups.
+            # If you have a subdomain docroot, set secret FTP_ADMIN_DIR accordingly.
+            dest: /public_html/admin/
             zip_prefix: admin.ohmyfood.eu
             needs_here: false
 
@@ -198,8 +200,9 @@ jobs:
                 (matrix.app.name == 'customer' && env.FTP_CUSTOMER_DIR) ||
                 (matrix.app.name == 'admin' && env.FTP_ADMIN_DIR) ||
                 matrix.app.dest }}
-          # Incremental deploy (default). Avoids re-uploading unchanged files.
-          dangerous-clean-slate: false
+          # Avoid stale assets by replacing server-dir completely.
+          dangerous-clean-slate: true
+          state-name: .ftp-deploy-state-${{ matrix.app.name }}.json
           timeout: 300000
           log-level: verbose
 

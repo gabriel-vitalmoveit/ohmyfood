@@ -70,9 +70,11 @@ final courierRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
     redirect: (context, state) {
-      final isLogin = state.matchedLocation == '/login';
-      final isOnboarding = state.matchedLocation == '/onboarding';
-      final isAccessDenied = state.matchedLocation == '/access-denied';
+      // Use uri.path (more robust for hash URLs / deep-links).
+      final path = state.uri.path;
+      final isLogin = path == '/login';
+      final isOnboarding = path == '/onboarding';
+      final isAccessDenied = path == '/access-denied';
       
       // 1) Onboarding primeiro (mas nunca bloquear a rota /login)
       if (!completed && !isOnboarding && !isLogin && !isAccessDenied) {

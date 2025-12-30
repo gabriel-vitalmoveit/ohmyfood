@@ -153,7 +153,12 @@ if ($deployTarget && isset($targetMap[$deployTarget])) {
   if (!$docroot) {
     $cwd = getcwd();
     if ($cwd && basename($cwd) === "public_html") {
-      $docroot = rtrim($cwd, "/") . "/" . $assetPrefix;
+      // Admin is often configured as /public_html/admin/ instead of a subdomain docroot folder.
+      if ($deployTarget === 'admin' && is_dir(rtrim($cwd, "/") . "/admin")) {
+        $docroot = rtrim($cwd, "/") . "/admin";
+      } else {
+        $docroot = rtrim($cwd, "/") . "/" . $assetPrefix;
+      }
     }
   }
 }
