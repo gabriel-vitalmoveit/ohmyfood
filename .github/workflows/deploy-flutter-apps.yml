@@ -3,13 +3,6 @@ name: Deploy Flutter Web Apps (cPanel via FTP)
 on:
   push:
     branches: [main]
-    paths:
-      - "apps/courier_app/**"
-      - "apps/restaurant_app/**"
-      - "apps/customer_app/**"
-      - "packages/**"
-      - "scripts/bootstrap_flutter.sh"
-      - ".github/workflows/deploy-flutter-apps.yml"
   workflow_dispatch: {}
 
 concurrency:
