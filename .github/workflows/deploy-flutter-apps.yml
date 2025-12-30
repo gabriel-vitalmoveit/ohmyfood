@@ -228,6 +228,14 @@ jobs:
             echo "Resolved server-dir is empty (APP_NAME=$APP_NAME)" >&2
             exit 1
           fi
+          # cPanel FTP paths are typically relative (no leading slash).
+          # If the secret was configured as "/public_html/...", strip the leading slash.
+          server_dir="${server_dir#/}"
+          # Basic safety checks: no traversal and no empty after normalization.
+          if [[ "$server_dir" == *".."* ]]; then
+            echo "Resolved server-dir contains '..' (APP_NAME=$APP_NAME, server_dir=$server_dir)" >&2
+            exit 1
+          fi
           [[ "$server_dir" != */ ]] && server_dir="$server_dir/"
 
           echo "server_dir=$server_dir" >> "$GITHUB_OUTPUT"
@@ -236,8 +244,8 @@ jobs:
 
       - name: Deploy to cPanel via FTP
         if: ${{ env.FTP_SERVER != '' && env.FTP_USERNAME != '' && env.FTP_PASSWORD != '' }}
-        # Fail the workflow if admin deploy fails (others can remain non-blocking if needed).
-        continue-on-error: ${{ matrix.app.name != 'admin' }}
+        # If deploy fails for any app, fail the workflow (avoid false-green runs).
+        continue-on-error: false
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           # GoDaddy cPanel typically requires explicit FTPS on port 21.
