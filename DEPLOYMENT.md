@@ -86,6 +86,7 @@ Configurar em **GitHub → Settings → Secrets and variables → Actions → Se
   - `FTP_USERNAME`: (o user de deploy)
   - `FTP_PASSWORD`: (a password de deploy)
   - `FTP_PORT`: `21` (opcional; default 21)
+  - `ENABLE_FTP_DEPLOY`: `true` (opcional; por default o workflow **não tenta FTP** e usa o pull-based via Release/cron)
 
 - **Build (Flutter)**
   - `API_BASE_URL`: `https://api.ohmyfood.eu`
