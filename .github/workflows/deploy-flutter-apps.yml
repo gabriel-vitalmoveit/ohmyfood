@@ -51,25 +51,25 @@ jobs:
         app:
           - name: courier
             path: apps/courier_app
-            dest: public_html/estafeta.ohmyfood.eu/
+            dest: estafeta.ohmyfood.eu/
             zip_prefix: estafeta.ohmyfood.eu
             needs_here: true
           - name: restaurant
             path: apps/restaurant_app
-            dest: public_html/restaurante.ohmyfood.eu/
+            dest: restaurante.ohmyfood.eu/
             zip_prefix: restaurante.ohmyfood.eu
             needs_here: false
           - name: customer
             path: apps/customer_app
             # Main domain docroot is usually just public_html/
-            dest: public_html/
+            dest: ./
             zip_prefix: ohmyfood.eu
             needs_here: false
           - name: admin
             path: apps/admin_panel
             # Default to a folder that exists on most cPanel setups.
             # If you have a subdomain docroot, set secret FTP_ADMIN_DIR accordingly.
-            dest: public_html/admin/
+            dest: admin/
             zip_prefix: admin.ohmyfood.eu
             needs_here: false
 
@@ -151,6 +151,17 @@ jobs:
             '  ExpiresByType image/svg+xml "access plus 1 year"' \
             '</IfModule>' \
             > "$target"
+
+      - name: Write deploy marker
+        env:
+          APP_NAME: ${{ matrix.app.name }}
+          SHA: ${{ github.sha }}
+          STAMP: ${{ needs.prepare.outputs.stamp }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="${{ matrix.app.path }}/build/web/deploy_marker.txt"
+          printf "app=%s\nsha=%s\ntimestamp=%s\n" "$APP_NAME" "$SHA" "$STAMP" > "$out"
 
       - name: Zip build output (with .htaccess)
         env:
