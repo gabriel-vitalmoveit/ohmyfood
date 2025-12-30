@@ -182,7 +182,7 @@ jobs:
         with:
           # GoDaddy cPanel typically requires explicit FTPS on port 21.
           # Override with secret FTP_PROTOCOL if needed: ftp | ftps | ftps-legacy
-          protocol: ${{ env.FTP_PROTOCOL || 'ftps' }}
+          protocol: ${{ env.FTP_PROTOCOL || 'ftp' }}
           server: ${{ env.FTP_SERVER }}
           username: ${{ env.FTP_USERNAME }}
           password: ${{ env.FTP_PASSWORD }}
@@ -196,6 +196,8 @@ jobs:
                 matrix.app.dest }}
           # Incremental deploy (default). Avoids re-uploading unchanged files.
           dangerous-clean-slate: false
+          timeout: 300000
+          log-level: verbose
 
   release:
     needs: [prepare, build-and-deploy]
