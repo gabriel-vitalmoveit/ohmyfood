@@ -44,6 +44,9 @@ jobs:
       FTP_ADMIN_DIR: ${{ secrets.FTP_ADMIN_DIR || '' }}
     strategy:
       fail-fast: false
+      # GoDaddy/cPanel FTP accounts often have low concurrent session limits.
+      # Run matrix sequentially to avoid intermittent 530 auth failures.
+      max-parallel: 1
       matrix:
         app:
           - name: courier
