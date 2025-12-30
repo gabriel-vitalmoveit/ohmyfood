@@ -45,6 +45,12 @@ jobs:
       # Disable FTP by default (shared hosting often blocks port 21).
       # Enable explicitly by setting secret ENABLE_FTP_DEPLOY=true.
       ENABLE_FTP_DEPLOY: ${{ secrets.ENABLE_FTP_DEPLOY || '' }}
+      # Disable ZIP artifacts + GitHub Release by default.
+      # Enable explicitly by setting secret ENABLE_RELEASE_ZIPS=true.
+      ENABLE_RELEASE_ZIPS: ${{ secrets.ENABLE_RELEASE_ZIPS || '' }}
+      # Deploy built static assets by pushing to a branch that cPanel can `git pull`.
+      # On cPanel, clone/pull this branch into /home/<user>/public_html so folders match docroots.
+      CPANEL_DEPLOY_BRANCH: cpanel-web
     strategy:
       fail-fast: false
       # GoDaddy/cPanel FTP accounts often have low concurrent session limits.
@@ -167,6 +173,7 @@ jobs:
           printf "app=%s\nsha=%s\ntimestamp=%s\n" "$APP_NAME" "$SHA" "$STAMP" > "$out"
 
       - name: Zip build output (with .htaccess)
+        if: ${{ env.ENABLE_RELEASE_ZIPS == 'true' }}
         env:
           STAMP: ${{ needs.prepare.outputs.stamp }}
           ZIP_PREFIX: ${{ matrix.app.zip_prefix }}
@@ -189,11 +196,30 @@ jobs:
           ls -lh "$ZIP_PATH"
 
       - name: Upload ZIP artifact
+        if: ${{ env.ENABLE_RELEASE_ZIPS == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.app.name }}-web-zip-${{ needs.prepare.outputs.tag }}
           path: dist/zips/*.zip
           if-no-files-found: error
+
+      - name: Stage build output for cPanel deploy branch
+        id: stage_build
+        shell: bash
+        env:
+          APP_NAME: ${{ matrix.app.name }}
+        run: |
+          set -euo pipefail
+          BUILD_DIR="${{ matrix.app.path }}/build/web"
+          if [[ ! -d "$BUILD_DIR" ]]; then
+            echo "Missing build output directory: $BUILD_DIR" >&2
+            exit 1
+          fi
+          STAGE_DIR="${RUNNER_TEMP}/cpanel_stage_${APP_NAME}"
+          rm -rf "$STAGE_DIR"
+          mkdir -p "$STAGE_DIR"
+          cp -R "$BUILD_DIR"/. "$STAGE_DIR"/
+          echo "stage_dir=$STAGE_DIR" >> "$GITHUB_OUTPUT"
 
       - name: Resolve FTP server-dir
         id: resolve_server_dir
@@ -245,6 +271,60 @@ jobs:
           echo "server_dir_len=${#server_dir}" >> "$GITHUB_OUTPUT"
           echo "Resolved server-dir (len=${#server_dir}) for $APP_NAME"
 
+      - name: Deploy to cPanel via git pull branch (cpanel-web)
+        shell: bash
+        env:
+          APP_NAME: ${{ matrix.app.name }}
+          STAGE_DIR: ${{ steps.stage_build.outputs.stage_dir }}
+          DEPLOY_BRANCH: ${{ env.CPANEL_DEPLOY_BRANCH }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${DEPLOY_BRANCH:-}" ]]; then
+            echo "CPANEL_DEPLOY_BRANCH is empty; skipping branch deploy." >&2
+            exit 1
+          fi
+          if [[ -z "${STAGE_DIR:-}" || ! -d "$STAGE_DIR" ]]; then
+            echo "Missing staged build dir: $STAGE_DIR" >&2
+            exit 1
+          fi
+
+          # Map app -> cPanel docroot folder name under /home/<user>/public_html
+          TARGET_DIR=""
+          case "$APP_NAME" in
+            courier) TARGET_DIR="estafeta.ohmyfood.eu" ;;
+            restaurant) TARGET_DIR="restaurante.ohmyfood.eu" ;;
+            customer) TARGET_DIR="ohmyfood.eu" ;;
+            admin) TARGET_DIR="admin.ohmyfood.eu" ;;
+            *) echo "Unknown app name: $APP_NAME" >&2; exit 1 ;;
+          esac
+
+          # Fetch branch if it exists; otherwise create an orphan branch.
+          git fetch origin "$DEPLOY_BRANCH" || true
+          if git show-ref --verify --quiet "refs/remotes/origin/$DEPLOY_BRANCH"; then
+            git checkout -B "$DEPLOY_BRANCH" "origin/$DEPLOY_BRANCH"
+          else
+            git checkout --orphan "$DEPLOY_BRANCH"
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+
+          # Replace target directory contents with the staged build.
+          rm -rf "$TARGET_DIR"
+          mkdir -p "$TARGET_DIR"
+          cp -R "$STAGE_DIR"/. "$TARGET_DIR"/
+
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to deploy for $APP_NAME."
+            exit 0
+          fi
+
+          short_sha="${SHA:0:7}"
+          git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" \
+            commit -m "deploy(${APP_NAME}): ${short_sha}"
+          git push origin "$DEPLOY_BRANCH"
+
       - name: Deploy to cPanel via FTP
         if: ${{ env.ENABLE_FTP_DEPLOY == 'true' && env.FTP_SERVER != '' && env.FTP_USERNAME != '' && env.FTP_PASSWORD != '' }}
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
@@ -275,6 +355,7 @@ jobs:
   release:
     needs: [prepare, build-and-deploy]
     runs-on: ubuntu-latest
+    if: ${{ secrets.ENABLE_RELEASE_ZIPS == 'true' }}
     permissions:
       contents: write
     env:
