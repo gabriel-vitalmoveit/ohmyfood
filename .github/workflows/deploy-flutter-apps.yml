@@ -9,6 +9,11 @@ concurrency:
   group: deploy-flutter-apps-main
   cancel-in-progress: true
 
+env:
+  # Do not reference `secrets.*` directly in `if:` expressions (workflow validation).
+  # Instead map secrets to env and use `env.*` in conditions.
+  ENABLE_RELEASE_ZIPS: ${{ secrets.ENABLE_RELEASE_ZIPS || '' }}
+
 jobs:
   prepare:
     runs-on: ubuntu-latest
@@ -47,7 +52,7 @@ jobs:
       ENABLE_FTP_DEPLOY: ${{ secrets.ENABLE_FTP_DEPLOY || '' }}
       # Disable ZIP artifacts + GitHub Release by default.
       # Enable explicitly by setting secret ENABLE_RELEASE_ZIPS=true.
-      ENABLE_RELEASE_ZIPS: ${{ secrets.ENABLE_RELEASE_ZIPS || '' }}
+      ENABLE_RELEASE_ZIPS: ${{ env.ENABLE_RELEASE_ZIPS }}
       # Deploy built static assets by pushing to a branch that cPanel can `git pull`.
       # On cPanel, clone/pull this branch into /home/<user>/public_html so folders match docroots.
       CPANEL_DEPLOY_BRANCH: cpanel-web
@@ -355,7 +360,7 @@ jobs:
   release:
     needs: [prepare, build-and-deploy]
     runs-on: ubuntu-latest
-    if: ${{ secrets.ENABLE_RELEASE_ZIPS == 'true' }}
+    if: ${{ env.ENABLE_RELEASE_ZIPS == 'true' }}
     permissions:
       contents: write
     env:
