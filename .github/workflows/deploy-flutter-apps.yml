@@ -51,25 +51,25 @@ jobs:
         app:
           - name: courier
             path: apps/courier_app
-            dest: estafeta.ohmyfood.eu/
+            dest: public_html/estafeta.ohmyfood.eu/
             zip_prefix: estafeta.ohmyfood.eu
             needs_here: true
           - name: restaurant
             path: apps/restaurant_app
-            dest: restaurante.ohmyfood.eu/
+            dest: public_html/restaurante.ohmyfood.eu/
             zip_prefix: restaurante.ohmyfood.eu
             needs_here: false
           - name: customer
             path: apps/customer_app
             # Main domain docroot is usually just public_html/
-            dest: ./
+            dest: public_html/ohmyfood.eu/
             zip_prefix: ohmyfood.eu
             needs_here: false
           - name: admin
             path: apps/admin_panel
             # Default to a folder that exists on most cPanel setups.
             # If you have a subdomain docroot, set secret FTP_ADMIN_DIR accordingly.
-            dest: admin/
+            dest: public_html/admin/
             zip_prefix: admin.ohmyfood.eu
             needs_here: false
 
