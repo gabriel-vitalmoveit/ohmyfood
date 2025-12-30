@@ -73,6 +73,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Mark workspace as safe for git
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -170,12 +176,6 @@ jobs:
           name: ${{ matrix.app.name }}-web-zip-${{ needs.prepare.outputs.tag }}
           path: dist/zips/*.zip
           if-no-files-found: error
-
-      - name: Mark workspace as safe for git
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Deploy to cPanel via FTP
         # FTP is best-effort and disabled by default to avoid failing runs when credentials/ports are blocked.
