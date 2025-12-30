@@ -78,13 +78,14 @@ final restaurantRouterProvider = Provider<GoRouter>((ref) {
     ],
     redirect: (context, state) {
       // Use matchedLocation (works with Flutter web hash URLs like #/login).
+      final isRoot = state.matchedLocation == '/';
       final isLogin = state.matchedLocation == '/login';
       final isOnboarding = state.matchedLocation == '/onboarding';
       final isAccessDenied = state.matchedLocation == '/access-denied';
       
-      // 1) Onboarding primeiro (mas nunca bloquear a rota /login)
-      if (!completed && !isOnboarding && !isLogin && !isAccessDenied) {
-        return '/onboarding';
+      // Root deve ir direto para login para usuários não autenticados
+      if (!authState.isAuthenticated && isRoot) {
+        return '/login';
       }
 
       // Se completou onboarding mas está na tela de onboarding
@@ -103,8 +104,8 @@ final restaurantRouterProvider = Provider<GoRouter>((ref) {
           return isAccessDenied ? null : '/access-denied';
         }
 
-        // Role correta: se está em login/access-denied, redirecionar para dashboard
-        if (isLogin || isAccessDenied) {
+        // Role correta: se está em login/onboarding/access-denied, redirecionar para dashboard
+        if (isLogin || isOnboarding || isAccessDenied) {
           return '/dashboard';
         }
       }
@@ -115,10 +116,8 @@ final restaurantRouterProvider = Provider<GoRouter>((ref) {
 });
 
 String _getInitialLocation(bool onboardingCompleted, bool isAuthenticated) {
-  // Mostrar onboarding primeiro; depois login; depois dashboard.
-  if (!onboardingCompleted) return '/onboarding';
-  if (!isAuthenticated) return '/login';
-  return '/dashboard';
+  // Entrada padrão: login (não autenticado) ou dashboard (autenticado).
+  return isAuthenticated ? '/dashboard' : '/login';
 }
 
 class _RestaurantRouterNotifier extends ChangeNotifier {
