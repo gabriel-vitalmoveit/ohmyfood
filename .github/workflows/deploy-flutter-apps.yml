@@ -67,9 +67,9 @@ jobs:
             needs_here: false
           - name: admin
             path: apps/admin_panel
-            # Default to a folder that exists on most cPanel setups.
-            # If you have a subdomain docroot, set secret FTP_ADMIN_DIR accordingly.
-            dest: public_html/admin/
+            # Admin subdomain docroot (cPanel): public_html/admin.ohmyfood.eu/
+            # You can override via secret FTP_ADMIN_DIR if your docroot differs.
+            dest: public_html/admin.ohmyfood.eu/
             zip_prefix: admin.ohmyfood.eu
             needs_here: false
 
@@ -192,9 +192,52 @@ jobs:
           path: dist/zips/*.zip
           if-no-files-found: error
 
+      - name: Resolve FTP server-dir
+        id: resolve_server_dir
+        shell: bash
+        env:
+          APP_NAME: ${{ matrix.app.name }}
+          DEFAULT_DIR: ${{ matrix.app.dest }}
+          FTP_SERVER_DIR: ${{ env.FTP_SERVER_DIR }}
+          FTP_COURIER_DIR: ${{ env.FTP_COURIER_DIR }}
+          FTP_RESTAURANT_DIR: ${{ env.FTP_RESTAURANT_DIR }}
+          FTP_CUSTOMER_DIR: ${{ env.FTP_CUSTOMER_DIR }}
+          FTP_ADMIN_DIR: ${{ env.FTP_ADMIN_DIR }}
+        run: |
+          set -euo pipefail
+
+          raw="$DEFAULT_DIR"
+          case "$APP_NAME" in
+            courier)
+              raw="${FTP_COURIER_DIR:-${FTP_SERVER_DIR:-$DEFAULT_DIR}}"
+              ;;
+            restaurant)
+              raw="${FTP_RESTAURANT_DIR:-$DEFAULT_DIR}"
+              ;;
+            customer)
+              raw="${FTP_CUSTOMER_DIR:-$DEFAULT_DIR}"
+              ;;
+            admin)
+              raw="${FTP_ADMIN_DIR:-$DEFAULT_DIR}"
+              ;;
+          esac
+
+          # Normalize: trim whitespace + ensure trailing slash.
+          server_dir="$(printf '%s' "$raw" | xargs)"
+          if [[ -z "$server_dir" ]]; then
+            echo "Resolved server-dir is empty (APP_NAME=$APP_NAME)" >&2
+            exit 1
+          fi
+          [[ "$server_dir" != */ ]] && server_dir="$server_dir/"
+
+          echo "server_dir=$server_dir" >> "$GITHUB_OUTPUT"
+          echo "server_dir_len=${#server_dir}" >> "$GITHUB_OUTPUT"
+          echo "Resolved server-dir (len=${#server_dir}) for $APP_NAME"
+
       - name: Deploy to cPanel via FTP
         if: ${{ env.FTP_SERVER != '' && env.FTP_USERNAME != '' && env.FTP_PASSWORD != '' }}
-        continue-on-error: true
+        # Fail the workflow if admin deploy fails (others can remain non-blocking if needed).
+        continue-on-error: ${{ matrix.app.name != 'admin' }}
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           # GoDaddy cPanel typically requires explicit FTPS on port 21.
@@ -205,13 +248,7 @@ jobs:
           password: ${{ env.FTP_PASSWORD }}
           port: ${{ env.FTP_PORT || 21 }}
           local-dir: ${{ matrix.app.path }}/build/web/
-          # Optional per-app override: FTP_SERVER_DIR (courier legacy), or FTP_<APP>_DIR.
-          server-dir: >-
-            ${{ (matrix.app.name == 'courier' && (env.FTP_COURIER_DIR || env.FTP_SERVER_DIR)) ||
-                (matrix.app.name == 'restaurant' && env.FTP_RESTAURANT_DIR) ||
-                (matrix.app.name == 'customer' && env.FTP_CUSTOMER_DIR) ||
-                (matrix.app.name == 'admin' && env.FTP_ADMIN_DIR) ||
-                matrix.app.dest }}
+          server-dir: ${{ steps.resolve_server_dir.outputs.server_dir }}
           # Avoid stale assets by replacing server-dir completely.
           dangerous-clean-slate: true
           state-name: .ftp-deploy-state-${{ matrix.app.name }}.json
