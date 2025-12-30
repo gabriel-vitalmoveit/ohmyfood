@@ -42,6 +42,9 @@ jobs:
       FTP_RESTAURANT_DIR: ${{ secrets.FTP_RESTAURANT_DIR || '' }}
       FTP_CUSTOMER_DIR: ${{ secrets.FTP_CUSTOMER_DIR || '' }}
       FTP_ADMIN_DIR: ${{ secrets.FTP_ADMIN_DIR || '' }}
+      # Disable FTP by default (shared hosting often blocks port 21).
+      # Enable explicitly by setting secret ENABLE_FTP_DEPLOY=true.
+      ENABLE_FTP_DEPLOY: ${{ secrets.ENABLE_FTP_DEPLOY || '' }}
     strategy:
       fail-fast: false
       # GoDaddy/cPanel FTP accounts often have low concurrent session limits.
@@ -243,9 +246,7 @@ jobs:
           echo "Resolved server-dir (len=${#server_dir}) for $APP_NAME"
 
       - name: Deploy to cPanel via FTP
-        if: ${{ env.FTP_SERVER != '' && env.FTP_USERNAME != '' && env.FTP_PASSWORD != '' }}
-        # If deploy fails for any app, fail the workflow (avoid false-green runs).
-        continue-on-error: false
+        if: ${{ env.ENABLE_FTP_DEPLOY == 'true' && env.FTP_SERVER != '' && env.FTP_USERNAME != '' && env.FTP_PASSWORD != '' }}
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           # GoDaddy cPanel typically requires explicit FTPS on port 21.
@@ -262,6 +263,14 @@ jobs:
           state-name: .ftp-deploy-state-${{ matrix.app.name }}.json
           timeout: 300000
           log-level: verbose
+
+      - name: FTP disabled notice (use Release deploy script)
+        if: ${{ env.ENABLE_FTP_DEPLOY != 'true' }}
+        shell: bash
+        run: |
+          echo "FTP deploy is disabled (ENABLE_FTP_DEPLOY != 'true')."
+          echo "This workflow will publish GitHub Release ZIPs."
+          echo "Deploy on cPanel using scripts/cpanel_deploy_from_release.php (manual or cron/webhook)."
 
   release:
     needs: [prepare, build-and-deploy]
