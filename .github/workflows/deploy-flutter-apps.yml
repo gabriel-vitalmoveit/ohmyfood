@@ -38,7 +38,8 @@ jobs:
     env:
       # GitHub Actions currently rejects `secrets.*` in `if:` expressions at workflow validation time.
       # Work around by mapping secrets -> env, and using env.* in `if:`.
-      FTP_SERVER: ${{ secrets.FTP_SERVER || secrets.CPANEL_FTP_SERVER || '' }}
+      # Prefer direct cPanel hostname if secret still points to legacy ftp hostname.
+      FTP_SERVER: ${{ (secrets.FTP_SERVER == 'ftp.ohmyfood.com' && 'sxb1plzcpnl505625.prod.sxb1.secureserver.net') || secrets.FTP_SERVER || secrets.CPANEL_FTP_SERVER || 'sxb1plzcpnl505625.prod.sxb1.secureserver.net' }}
       FTP_USERNAME: ${{ secrets.FTP_USERNAME || secrets.CPANEL_FTP_USERNAME || '' }}
       FTP_PASSWORD: ${{ secrets.FTP_PASSWORD || secrets.CPANEL_FTP_PASSWORD || '' }}
       FTP_PORT: ${{ secrets.FTP_PORT || secrets.CPANEL_FTP_PORT || '' }}
@@ -47,6 +48,7 @@ jobs:
       FTP_COURIER_DIR: ${{ secrets.FTP_COURIER_DIR || '' }}
       FTP_RESTAURANT_DIR: ${{ secrets.FTP_RESTAURANT_DIR || '' }}
       FTP_CUSTOMER_DIR: ${{ secrets.FTP_CUSTOMER_DIR || '' }}
+      FTP_ADMIN_DIR: ${{ secrets.FTP_ADMIN_DIR || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -65,6 +67,11 @@ jobs:
             path: apps/customer_app
             dest: /public_html/ohmyfood.eu/
             zip_prefix: ohmyfood.eu
+            needs_here: false
+          - name: admin
+            path: apps/admin_panel
+            dest: /public_html/admin.ohmyfood.eu/
+            zip_prefix: admin.ohmyfood.eu
             needs_here: false
 
     steps:
@@ -182,7 +189,7 @@ jobs:
         with:
           # GoDaddy cPanel typically requires explicit FTPS on port 21.
           # Override with secret FTP_PROTOCOL if needed: ftp | ftps | ftps-legacy
-          protocol: ${{ env.FTP_PROTOCOL || 'ftp' }}
+          protocol: ${{ env.FTP_PROTOCOL || 'ftps' }}
           server: ${{ env.FTP_SERVER }}
           username: ${{ env.FTP_USERNAME }}
           password: ${{ env.FTP_PASSWORD }}
@@ -193,6 +200,7 @@ jobs:
             ${{ (matrix.app.name == 'courier' && (env.FTP_COURIER_DIR || env.FTP_SERVER_DIR)) ||
                 (matrix.app.name == 'restaurant' && env.FTP_RESTAURANT_DIR) ||
                 (matrix.app.name == 'customer' && env.FTP_CUSTOMER_DIR) ||
+                (matrix.app.name == 'admin' && env.FTP_ADMIN_DIR) ||
                 matrix.app.dest }}
           # Incremental deploy (default). Avoids re-uploading unchanged files.
           dangerous-clean-slate: false

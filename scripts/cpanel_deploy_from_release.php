@@ -142,6 +142,7 @@ $targetMap = [
   "courier" => "estafeta.ohmyfood.eu",
   "restaurant" => "restaurante.ohmyfood.eu",
   "customer" => "ohmyfood.eu",
+  "admin" => "admin.ohmyfood.eu",
 ];
 
 if ($deployTarget && isset($targetMap[$deployTarget])) {

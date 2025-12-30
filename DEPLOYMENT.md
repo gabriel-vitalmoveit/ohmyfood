@@ -11,6 +11,7 @@ Apps cobertas:
 - **estafeta**: `apps/courier_app` → `estafeta.ohmyfood.eu`
 - **restaurante**: `apps/restaurant_app` → `restaurante.ohmyfood.eu`
 - **cliente**: `apps/customer_app` → `ohmyfood.eu`
+- **admin**: `apps/admin_panel` → `admin.ohmyfood.eu`
 
 ## Melhor abordagem (robusta) para cPanel: Release + Pull via HTTPS
 
@@ -39,6 +40,7 @@ Ele baixa o ZIP do release `web-build-*` (ou um tag específico), extrai, faz sw
 cd /home/<user>/public_html && DEPLOY_TARGET=courier GITHUB_REPO="gabriel-vitalmoveit/ohmyfood" /usr/bin/php scripts/cpanel_deploy_from_release.php
 cd /home/<user>/public_html && DEPLOY_TARGET=restaurant GITHUB_REPO="gabriel-vitalmoveit/ohmyfood" /usr/bin/php scripts/cpanel_deploy_from_release.php
 cd /home/<user>/public_html && DEPLOY_TARGET=customer GITHUB_REPO="gabriel-vitalmoveit/ohmyfood" /usr/bin/php scripts/cpanel_deploy_from_release.php
+cd /home/<user>/public_html && DEPLOY_TARGET=admin GITHUB_REPO="gabriel-vitalmoveit/ohmyfood" /usr/bin/php scripts/cpanel_deploy_from_release.php
 ```
 
 Se o repo for privado, adicionar `GITHUB_TOKEN="..."` (guardar esse token no servidor, não no repo).
