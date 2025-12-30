@@ -31,8 +31,6 @@ jobs:
     env:
       # GitHub Actions currently rejects `secrets.*` in `if:` expressions at workflow validation time.
       # Work around by mapping secrets -> env, and using env.* in `if:`.
-      # NOTE: FTP deploy is optional. Enable explicitly with secret ENABLE_FTP_DEPLOY=true.
-      ENABLE_FTP_DEPLOY: ${{ secrets.ENABLE_FTP_DEPLOY || '' }}
       # Prefer direct cPanel hostname if secret still points to legacy ftp hostname.
       FTP_SERVER: ${{ (secrets.FTP_SERVER == 'ftp.ohmyfood.com' && 'sxb1plzcpnl505625.prod.sxb1.secureserver.net') || secrets.FTP_SERVER || secrets.CPANEL_FTP_SERVER || 'sxb1plzcpnl505625.prod.sxb1.secureserver.net' }}
       FTP_USERNAME: ${{ secrets.FTP_USERNAME || secrets.CPANEL_FTP_USERNAME || '' }}
@@ -180,8 +178,7 @@ jobs:
           if-no-files-found: error
 
       - name: Deploy to cPanel via FTP
-        # FTP is best-effort and disabled by default to avoid failing runs when credentials/ports are blocked.
-        if: ${{ env.ENABLE_FTP_DEPLOY == 'true' && env.FTP_SERVER != '' && env.FTP_USERNAME != '' && env.FTP_PASSWORD != '' }}
+        if: ${{ env.FTP_SERVER != '' && env.FTP_USERNAME != '' && env.FTP_PASSWORD != '' }}
         continue-on-error: true
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
